@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TimeTrackr — Zeitmanagement</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
+<style>
+/* --- Theme vars --- */
+:root{
+  --bg:#f3f4f6;
+  --panel:#ffffff;
+  --text:#0b1220;
+  --muted:#425066;
+  --accent1:#28a745;
+  --accent2:#3b82f6;
+  --radius:12px;
+  --shadow: 0 8px 24px rgba(15,23,42,0.06);
+}
+:root.dark{
+  --bg:#0b0b0c;
+  --panel:#0f1112;
+  --text:#e8e8e8;
+  --muted:#9aa0a6;
+  --accent1:#ff4d4f;
+  --accent2:#ff902b;
+  --shadow: 0 8px 28px rgba(0,0,0,0.6);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+  background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:20px;
+  display:flex;align-items:flex-start;justify-content:center;
+}
+.app{width:100%;max-width:1100px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{margin:0;font-size:1.6rem}
+.top-controls{display:flex;gap:10px;align-items:center}
+button{background:var(--panel);border:1px solid rgba(0,0,0,0.06);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer;box-shadow:var(--shadow)}
+.small{padding:6px 10px;font-size:0.9rem}
+.ghost{background:transparent}
+.accent{background:linear-gradient(90deg,var(--accent1),var(--accent2));border:none;color:#fff}
+.danger{background:transparent;border:1px solid var(--accent1);color:var(--accent1)}
+.top{display:flex;gap:16px;align-items:flex-start}
+.cats-panel{flex:1;background:var(--panel);padding:16px;border-radius:var(--radius)}
+.timer-panel{width:360px;min-width:260px;background:var(--panel);padding:18px;border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;gap:10px}
+.category-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.category-card{padding:10px 12px;border-radius:10px;background:linear-gradient(90deg, rgba(0,0,0,0.02), transparent);display:flex;align-items:center;gap:12px;border:1px solid rgba(0,0,0,0.04)}
+.category-name{font-weight:700}
+.category-meta{font-size:0.85rem;color:var(--muted)}
+.time-big{font-size:2.2rem;font-weight:800}
+.timer-controls{display:flex;gap:8px;margin-top:8px}
+select,input{padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--text)}
+input[type="number"]{width:80px}
+.actions-row{display:flex;gap:8px;align-items:center;margin-top:12px}
+.centered{display:flex;justify-content:center}
+.stats-panel{background:var(--panel);padding:14px;border-radius:var(--radius);margin-top:14px}
+.stats-header{display:flex;align-items:center;justify-content:space-between}
+.toggle-details{cursor:pointer;color:var(--muted);font-size:0.95rem}
+.charts{display:grid;grid-template-columns:1fr 420px;gap:12px;margin-top:12px}
+canvas{background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent);border-radius:10px;padding:8px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:8px 6px;text-align:left;border-bottom:1px dashed rgba(0,0,0,0.06)}
+.sessions-list{max-height:220px;overflow:auto}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999}
+.modal{background:var(--panel);padding:18px;border-radius:12px;min-width:320px;max-width:720px}
+.form-row{display:flex;gap:8px;margin-bottom:8px}
+label{font-size:0.9rem;color:var(--muted);min-width:120px;display:inline-block}
+@media (max-width:980px){ .charts{grid-template-columns:1fr} .timer-panel{width:100%} .top{flex-direction:column} }
+.tooltip{position:absolute;padding:6px 8px;border-radius:6px;background:var(--panel);border:1px solid rgba(0,0,0,0.06);pointer-events:none;font-size:0.9rem;z-index:10000}
+#toast{z-index:9999;backdrop-filter:blur(6px);display:none;position:fixed;top:20px;right:20px;padding:10px 16px;border-radius:8px;font-weight:500;opacity:0;transition:opacity 0.4s}
+:root:not(.dark) #toast{background:#0077cc;color:white}
+.dark #toast{background:#ff6600;color:#fff}
+input[type="file"]{display:none}
+.login-screen{display:flex;align-items:center;justify-content:center;height:78vh}
+.login-card{background:var(--panel);padding:20px;border-radius:12px;box-shadow:var(--shadow);width:360px;max-width:90%}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+small.muted{color:var(--muted);display:block;margin-top:6px}
+.header-row{display:flex;justify-content:space-between;align-items:center}
+.user-badge{font-size:0.9rem;color:var(--muted)}
+.kv-small{font-size:0.85rem;color:var(--muted)}
+.role-pill{font-size:0.75rem;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,0.04)}
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <h1 id="appTitle">Zeitmanagement</h1>
+      <div class="top-controls">
+        <div id="userArea"></div>
+        <button id="modeToggle" class="small" title="Theme wechseln">☀️</button>
+      </div>
+    </header>
+
+    <!-- LOGIN -->
+    <div id="loginRoot"></div>
+
+    <!-- APP -->
+    <div id="mainRoot" style="display:none">
+      <div class="top">
+        <section class="cats-panel" aria-labelledby="catsTitle">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="addCategoryBtn" class="accent small" aria-label="Kategorie hinzufügen">Kategorie hinzufügen ➕</button>
+              <button id="delModeBtn" class="ghost small" aria-pressed="false" title="In den Lösch-Modus wechseln">Löschen 🗑️</button>
+            </div>
+            <div style="text-align:right">
+              <div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div>
+            </div>
+          </div>
+
+          <div class="category-list" id="categoryList" aria-live="polite" style="margin-top:12px"></div>
+
+          <div class="actions-row" style="margin-top:12px">
+            <input type="file" id="importFile" accept=".csv,text/csv" />
+            <button id="exportBtn" class="small ghost">Export (CSV) ⤓</button>
+            <button id="importBtn" class="small ghost">Import (CSV) ⤒</button>
+            <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
+            <button id="resetBtn" class="small danger">Reset</button>
+          </div>
+
+          <div class="centered" style="margin-top:10px">
+            <button id="forgotBtn" class="accent" style="white-space:nowrap">Zeit stoppen vergessen? ⏱️</button>
+          </div>
+        </section>
+
+        <aside class="timer-panel" aria-label="Timer Panel">
+          <div style="font-size:0.9rem;color:var(--muted)">Aktueller Timer</div>
+          <div class="time-big" id="activeTimerDisplay">--:--:--</div>
+          <div style="width:100%;display:flex;gap:8px;align-items:center">
+            <label for="activeCategorySelect" style="min-width:110px;color:var(--muted)">Kategorie</label>
+            <select id="activeCategorySelect" aria-label="Aktive Kategorie" style="flex:1"></select>
+          </div>
+          <div class="timer-controls" style="width:100%;justify-content:center">
+            <button id="startBtn" class="small">Start ▶</button>
+            <button id="stopBtn" class="small">Stop ▮</button>
+            <button id="miniBtn" class="small ghost" title="Kleines Timer-Fenster öffnen">Mini ⌘</button>
+          </div>
+          <div style="font-size:0.9rem;color:var(--muted);text-align:center;margin-top:6px">Timer läuft auch nach Reload weiter</div>
+        </aside>
+      </div>
+
+      <section class="stats-panel" id="statsPanel" aria-labelledby="statsTitle">
+        <div class="stats-header">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div id="statsTitle" style="font-weight:700">Statistiken</div>
+            <div id="rangeButtons" style="display:flex;gap:6px">
+              <button class="small" data-range="7">Letzte 7 Tage</button>
+              <button class="small" data-range="14">Letzte 14 Tage</button>
+              <button class="small" data-range="30">30 Tage</button>
+              <button class="small" data-range="all">Gesamt</button>
+            </div>
+          </div>
+          <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
+        </div>
+
+        <div id="statsContent" style="display:none;margin-top:10px">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:1;min-width:320px">
+              <table id="statsTable" aria-label="Statistiken Tabelle">
+                <thead><tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div style="width:420px">
+              <canvas id="barChart" width="420" height="220" role="img" aria-label="Balkendiagramm"></canvas>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
+            <canvas id="lineChart" width="980" height="240" style="width:100%" role="img" aria-label="Liniendiagramm"></canvas>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
+            <div class="sessions-list"><table id="sessionsTable"><thead>
+      <tr>
+        <th>Datum</th>
+        <th>Kategorie</th>
+        <th>Dauer</th>
+        <th>Notiz</th>
+      </tr>
+    </thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="modalRoot"></div>
+    <div id="toast"></div>
+  </div>
+
+<script>
+/* --------------------------
+  Frontend App JS (single file)
+   - Kommuniziert mit /api/*
+   - Auth via server-set-Cookie (credentials: 'include')
+   - Lokal-Fallback & Theme in localStorage
+---------------------------*/
+(() => {
+const API = '/api';
+const LS_THEME = 'tt:theme_v1';
+const LS_ACTIVE = 'tt:active_v1';
+
+let state = { categories: [], active: null, theme: 'light', me: null };
+let currentRange = '7';
+let delMode = false;
+
+// DOM
+const loginRoot = document.getElementById('loginRoot');
+const mainRoot = document.getElementById('mainRoot');
+const modalRoot = document.getElementById('modalRoot');
+const toast = document.getElementById('toast');
+const modeToggle = document.getElementById('modeToggle');
+const userArea = document.getElementById('userArea');
+
+// app elements (filled later)
+let categoryList, addCategoryBtn, delModeBtn, activeCategorySelect, startBtn, stopBtn, activeTimerDisplay, forgotBtn;
+let exportBtn, importBtn, importFile, refreshBtn, resetBtn, toggleStats, statsContent, statsTableBody, sessionsTableBody, barCanvas, lineCanvas, timespanButtons, miniBtn;
+
+function showToast(msg, ms=2200){
+  toast.textContent = msg; toast.style.display='block'; toast.style.opacity= '1';
+  setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=> toast.style.display='none',400); }, ms);
+}
+
+// Apply theme immediately
+function applyTheme() {
+  document.documentElement.classList.toggle('dark', state.theme === 'dark');
+  modeToggle.textContent = state.theme === 'light' ? '☀️' : '🌙';
+  localStorage.setItem(LS_THEME, state.theme);
+}
+modeToggle.addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; applyTheme(); });
+
+// Utility
+const uid = ()=> Math.random().toString(36).slice(2,9);
+const msToHms = ms => {
+  if(!isFinite(ms)) return '--:--:--';
+  const secs = Math.floor(ms/1000);
+  const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+};
+const minutesToHuman = min => { const h = Math.floor(min/60); const m = Math.round(min%60); return `${h}h ${m}m`; };
+const escapeHtml = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function openModal(innerHTML){ closeModal(); const backdrop = document.createElement('div'); backdrop.className='modal-backdrop'; const modal = document.createElement('div'); modal.className='modal'; modal.innerHTML = innerHTML + `<div style="text-align:right;margin-top:8px"><button id="closeModal" class="small">Schließen</button></div>`; backdrop.appendChild(modal); modalRoot.appendChild(backdrop); backdrop.querySelector('#closeModal').onclick = closeModal; return modal; }
+function closeModal(){ modalRoot.innerHTML=''; }
+
+// AUTH & initial load
+async function whoami() {
+  try {
+    const res = await fetch(API + '/whoami', { credentials: 'include' });
+    if(res.ok) return await res.json();
+    return null;
+  } catch(e){ return null; }
+}
+
+async function loadData(){
+  const res = await fetch(API + '/loadData', { credentials: 'include' });
+  if(!res.ok) {
+    console.warn('loadData fehlgeschlagen',res.status);
+    return null;
+  }
+  const data = await res.json();
+  return data;
+}
+
+async function saveData(payload){
+  const res = await fetch(API + '/saveData', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(payload)
+  });
+  return res.ok;
+}
+
+// LOGIN UI
+function showLogin(){
+  mainRoot.style.display = 'none';
+  loginRoot.innerHTML = `
+    <div class="login-screen">
+      <div class="login-card">
+        <div class="header-row"><div><h2>Einloggen</h2><small class="muted">Bitte Benutzernamen & Passwort eingeben</small></div><div class="user-badge" id="loginRole"></div></div>
+        <div class="field"><label>Benutzerna
