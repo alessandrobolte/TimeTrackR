@@ -857,14 +857,14 @@ async function showAdminView() {
       return;
     }
 
-    // Nur LemGOesHANA-Sessions filtern
+    // Nur LemGOesHANA-Sessions
     const filtered = allSessions.filter(s => s.category === "LemGOesHANA");
 
     // Alle Benutzer ermitteln
     const users = [...new Set(filtered.map(s => s.username))].sort();
     users.unshift("Alle Benutzer");
 
-    // Modal öffnen mit Dropdown
+    // Modal öffnen mit Dropdown + Platz für Summenzeile
     openModal(`
       <h3>LemGOesHANA — Cloud Sessions (Admin-Ansicht)</h3>
       <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
@@ -880,17 +880,19 @@ async function showAdminView() {
             <tr><th>Benutzer</th><th>Dauer</th><th>Notiz</th><th>Zeitpunkt</th></tr>
           </thead>
           <tbody></tbody>
+          <tfoot><tr id="summaryRow"><td colspan="4" style="text-align:right;color:var(--muted);font-weight:600;padding-top:6px"></td></tr></tfoot>
         </table>
       </div>
     `);
 
     const tbody = document.querySelector("#adminSessionsTable tbody");
+    const summary = document.querySelector("#summaryRow td");
     const filterSelect = document.getElementById("userFilter");
 
     // Render-Funktion
     function renderTable(selectedUser) {
-      let rows = filtered
-        .filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser)
+      const visible = filtered.filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser);
+      let rows = visible
         .map(
           s => `
           <tr>
@@ -902,17 +904,23 @@ async function showAdminView() {
         )
         .join("");
 
-      if (!rows) rows = `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Einträge</td></tr>`;
+      if (!rows)
+        rows = `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Einträge</td></tr>`;
       tbody.innerHTML = rows;
+
+      // Summenzeile berechnen
+      const totalMin = visible.reduce((sum, s) => sum + (s.durationMin || 0), 0);
+      summary.textContent =
+        totalMin > 0
+          ? `Summe: ${minutesToHuman(totalMin)} (${totalMin} min)`
+          : "Keine Zeiten vorhanden";
     }
 
     // Initial render
     renderTable("Alle Benutzer");
 
     // Filter-Änderung
-    filterSelect.addEventListener("change", e => {
-      renderTable(e.target.value);
-    });
+    filterSelect.addEventListener("change", e => renderTable(e.target.value));
 
     // CSV-Export
     document.getElementById("exportCloudBtn").addEventListener("click", () => {
@@ -920,7 +928,7 @@ async function showAdminView() {
       const rows = filtered.filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser);
       const csv = ["username,durationMin,note,timestamp"];
       rows.forEach(s =>
-        csv.push(`${escapeCsv(s.username)},${s.durationMin||0},${escapeCsv(s.note||'')},${new Date(s.timestamp).toISOString()}`)
+        csv.push(`${escapeCsv(s.username)},${s.durationMin || 0},${escapeCsv(s.note || "")},${new Date(s.timestamp).toISOString()}`)
       );
       downloadBlob(csv.join("\n"), `lemgoeshana_${selectedUser === "Alle Benutzer" ? "all" : selectedUser}.csv`);
     });
@@ -929,6 +937,7 @@ async function showAdminView() {
     alert("Fehler beim Abrufen der Cloud-Daten.");
   }
 }
+
 
 
     function downloadBlob(text, name){ const blob = new Blob([text],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
