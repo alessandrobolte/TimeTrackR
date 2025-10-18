@@ -1,0 +1,7 @@
+name = "timetrackr"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[[kv_namespaces]]
+binding = "ZM_SESSIONS"
+id = "4a587bea9f9b4c43a8e35174a42708aa" # hier trägst du die ID aus dem Cloudflare Dashboard ein
