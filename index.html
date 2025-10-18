@@ -193,6 +193,21 @@ async function loadSessionsFromCloud(username) {
     // ---------------------------
     async function init(){
       DB = await openDB('zm_db',1);
+      // 🩺 Sicherheitsprüfung: LemGOesHANA sicherstellen
+const catsNow = await idbGetAll(DB, 'categories');
+const hasLemGO = catsNow.some(c => c.name === NON_DELETABLE_CATEGORY_NAME);
+if (!hasLemGO) {
+  const id = uid();
+  await idbPut(DB, 'categories', { 
+    id, 
+    name: NON_DELETABLE_CATEGORY_NAME, 
+    owner: 'system', 
+    system: true, 
+    sessions: [] 
+  });
+  console.log("✅ LemGOesHANA automatisch wiederhergestellt");
+}
+
       // ensure users exist
       const existing = await idbGetAll(DB,'users');
       if(!existing || existing.length === 0){
