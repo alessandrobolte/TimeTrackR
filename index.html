@@ -125,7 +125,34 @@
     function idbGetAll(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const r=os.getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
     function idbDelete(db, store, key){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
     async function idbClear(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-    
+    // ---------------------------
+// Cloudflare API: Session speichern / abrufen
+// ---------------------------
+async function saveSessionToCloud(session) {
+  try {
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveSession", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    });
+  } catch (err) {
+    console.error("❌ Fehler beim Cloud-Speichern:", err);
+  }
+}
+
+async function loadSessionsFromCloud(username) {
+  try {
+    const res = await fetch(
+      `https://timetrackr.alessandrobolte.workers.dev/api/getSessions?username=${encodeURIComponent(username)}`
+    );
+    if (!res.ok) throw new Error(res.statusText);
+    return await res.json();
+  } catch (err) {
+    console.error("❌ Fehler beim Cloud-Laden:", err);
+    return [];
+  }
+}
+
     // ---------------------------
     // App Constants & initial data
     // ---------------------------
@@ -1072,6 +1099,13 @@ async function openMiniTimerWindow() {
           localStorage.removeItem("zm_active");
           showToast("Zeit gestoppt ✓");
           renderDashboard();
+          await saveSessionToCloud({
+  id: a.id,
+  username: a.username,
+  category: cat.name,
+  durationMin: durMin,
+  note,
+});
         });
 
         // 🔁 Live-Update der Anzeige im Popup
