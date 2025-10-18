@@ -793,13 +793,19 @@ try {
       }
     
       const sessions = await filterSessionsForViewer(c, c.sessions||[]);
-      const rows = sessions.map((s,idx)=>`
-        <tr>
-          <td>${escapeHtml(s.username || '')}</td>
-          <td>${minutesToHuman(s.durationMin||0)}</td>
-          <td contenteditable="${isAdmin? 'false':'true'}" data-idx="${idx}">${escapeHtml(s.note||'')}</td>
-          ${ isAdmin ? '' : `<td><button data-idx="${idx}" class="small">Löschen</button></td>`}
-        </tr>`).join('');
+      const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) userMap[u.username] = u.displayName;
+
+const rows = sessions.map((s, idx) => `
+  <tr>
+    <td>${escapeHtml(userMap[s.username] || s.username)}</td>
+    <td>${minutesToHuman(s.durationMin || 0)}</td>
+    <td contenteditable="${isAdmin ? 'false' : 'true'}" data-idx="${idx}">${escapeHtml(s.note || '')}</td>
+    ${isAdmin ? '' : `<td><button data-idx="${idx}" class="small">Löschen</button></td>`}
+  </tr>`
+).join('');
+
     
       const modal = openModal(
         `<h3>Details — ${escapeHtml(c.name)}</h3>
@@ -923,7 +929,10 @@ async function showAdminView() {
     const tbody = document.querySelector("#adminSessionsTable tbody");
     const summary = document.querySelector("#summaryRow td");
     const filterSelect = document.getElementById("userFilter");
-
+// Nutzernamen auf Anzeigenamen mappen
+const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) userMap[u.username] = u.displayName;
     // Render-Funktion
     function renderTable(selectedUser) {
       const visible = filtered.filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser);
@@ -931,7 +940,7 @@ async function showAdminView() {
         .map(
           s => `
           <tr>
-            <td>${escapeHtml(s.username || "—")}</td>
+            <td>${escapeHtml(userMap[s.username] || s.username)}</td>
             <td>${minutesToHuman(s.durationMin || 0)}</td>
             <td>${escapeHtml(s.note || "")}</td>
             <td>${new Date(s.timestamp).toLocaleString("de-DE")}</td>
@@ -1049,14 +1058,37 @@ async function showAdminView() {
       });
     
       // sessions list (flatten)
-      const all = [];
-      for(const c of cats){
-        const vis = await filterSessionsForViewer(c, c.sessions||[]);
-        vis.forEach(s=> all.push({cat:c.name, dur:s.durationMin, note:s.note, user:s.username}));
-      }
-      sessionsTable.innerHTML = all.map(s=>
-        `<tr><td>${escapeHtml(s.user||'')}</td><td>${escapeHtml(s.cat)}</td><td>${minutesToHuman(s.dur)}</td><td>${escapeHtml(s.note||'')}</td>${/* no action col here */ ''}</tr>`
-      ).join('');
+// Nutzer-Mapping vorbereiten
+const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) userMap[u.username] = u.displayName;
+
+// Sessions aufbereiten
+const all = [];
+for (const c of cats) {
+  const vis = await filterSessionsForViewer(c, c.sessions || []);
+  vis.forEach(s =>
+    all.push({
+      cat: c.name,
+      dur: s.durationMin,
+      note: s.note,
+      user: userMap[s.username] || s.username
+    })
+  );
+}
+
+// Tabelle ausgeben
+sessionsTable.innerHTML = all
+  .map(
+    s => `<tr>
+      <td>${escapeHtml(s.user || '')}</td>
+      <td>${escapeHtml(s.cat)}</td>
+      <td>${minutesToHuman(s.dur)}</td>
+      <td>${escapeHtml(s.note || '')}</td>
+    </tr>`
+  )
+  .join('');
+
     
       drawBarChart(); drawLineChart();
     }
