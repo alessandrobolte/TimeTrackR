@@ -859,9 +859,17 @@ try {
     async function exportCSV(){
       const cats = await getVisibleCategories();
       const rows=['category,categoryId,username,durationMin,note'];
+      const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) {
+  userMap[u.username] = u.displayName;
+}
       for(const c of cats){
         const vis = await filterSessionsForViewer(c, c.sessions||[]);
-        vis.forEach(s=> rows.push(`${escapeCsv(c.name)},${c.id},${escapeCsv(s.username||'')},${s.durationMin||''},${escapeCsv(s.note||'')}`));
+        vis.forEach(s=>{
+  const name = userMap[s.username] || s.username;   // 🔁 Anzeigename statt Username
+  rows.push(`${escapeCsv(c.name)},${c.id},${escapeCsv(name)},${s.durationMin||''},${escapeCsv(s.note||'')}`);
+});
       }
       downloadBlob(rows.join('\n'),'zeitmanagement_export.csv');
     }
