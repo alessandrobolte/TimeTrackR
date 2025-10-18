@@ -857,46 +857,79 @@ async function showAdminView() {
       return;
     }
 
-    // Nur LemGOesHANA-Sessions
+    // Nur LemGOesHANA-Sessions filtern
     const filtered = allSessions.filter(s => s.category === "LemGOesHANA");
 
-    const rows = filtered.map(s => `
-      <tr>
-        <td>${escapeHtml(s.username || "—")}</td>
-        <td>${minutesToHuman(s.durationMin || 0)}</td>
-        <td>${escapeHtml(s.note || "")}</td>
-        <td>${new Date(s.timestamp).toLocaleString("de-DE")}</td>
-      </tr>
-    `).join("");
+    // Alle Benutzer ermitteln
+    const users = [...new Set(filtered.map(s => s.username))].sort();
+    users.unshift("Alle Benutzer");
 
+    // Modal öffnen mit Dropdown
     openModal(`
       <h3>LemGOesHANA — Cloud Sessions (Admin-Ansicht)</h3>
+      <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
+        <label for="userFilter" style="color:var(--muted)">Benutzer:</label>
+        <select id="userFilter" class="small">
+          ${users.map(u => `<option value="${u}">${u}</option>`).join("")}
+        </select>
+        <button id="exportCloudBtn" class="small accent" style="margin-left:auto">Export (CSV)</button>
+      </div>
       <div style="max-height:420px;overflow:auto;margin-top:8px">
-        <table style="width:100%">
+        <table style="width:100%" id="adminSessionsTable">
           <thead>
             <tr><th>Benutzer</th><th>Dauer</th><th>Notiz</th><th>Zeitpunkt</th></tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody></tbody>
         </table>
-      </div>
-      <div style="margin-top:8px">
-        <button id="exportCloudBtn" class="accent small">Export (CSV)</button>
       </div>
     `);
 
+    const tbody = document.querySelector("#adminSessionsTable tbody");
+    const filterSelect = document.getElementById("userFilter");
+
+    // Render-Funktion
+    function renderTable(selectedUser) {
+      let rows = filtered
+        .filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser)
+        .map(
+          s => `
+          <tr>
+            <td>${escapeHtml(s.username || "—")}</td>
+            <td>${minutesToHuman(s.durationMin || 0)}</td>
+            <td>${escapeHtml(s.note || "")}</td>
+            <td>${new Date(s.timestamp).toLocaleString("de-DE")}</td>
+          </tr>`
+        )
+        .join("");
+
+      if (!rows) rows = `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Einträge</td></tr>`;
+      tbody.innerHTML = rows;
+    }
+
+    // Initial render
+    renderTable("Alle Benutzer");
+
+    // Filter-Änderung
+    filterSelect.addEventListener("change", e => {
+      renderTable(e.target.value);
+    });
+
     // CSV-Export
     document.getElementById("exportCloudBtn").addEventListener("click", () => {
+      const selectedUser = filterSelect.value;
+      const rows = filtered.filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser);
       const csv = ["username,durationMin,note,timestamp"];
-      filtered.forEach(s =>
+      rows.forEach(s =>
         csv.push(`${escapeCsv(s.username)},${s.durationMin||0},${escapeCsv(s.note||'')},${new Date(s.timestamp).toISOString()}`)
       );
-      downloadBlob(csv.join("\n"), "lemgoeshana_cloud_export.csv");
+      downloadBlob(csv.join("\n"), `lemgoeshana_${selectedUser === "Alle Benutzer" ? "all" : selectedUser}.csv`);
     });
   } catch (err) {
     console.error("❌ Fehler in showAdminView:", err);
     alert("Fehler beim Abrufen der Cloud-Daten.");
   }
 }
+
 
     function downloadBlob(text, name){ const blob = new Blob([text],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
     function escapeCsv(t){ if(t==null) return ''; const s=String(t); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"'; return s; }
