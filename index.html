@@ -1055,28 +1055,111 @@ async function showAdminView() {
     function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function getCssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#fff'; }
     
-    function drawLineChart(){
-      const canvas = document.getElementById('lineChart'); if(!canvas) return;
-      const ctx = canvas.getContext('2d'); const rect = canvas.getBoundingClientRect();
-      const DPR = window.devicePixelRatio || 1; canvas.width = Math.floor(rect.width * DPR); canvas.height = Math.floor(240 * DPR);
-      ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,rect.width,240);
-      (async()=>{
-        const cats = await getVisibleCategories();
-        const labels = Array.from({length:30},(_,i)=>`D${i+1}`);
-        const padding = {l:40,r:20,t:20,b:40}; const W = rect.width - padding.l - padding.r; const H = 240 - padding.t - padding.b;
-        // Demo-Serien wie vorher (keine echten Tagesdaten)
-        const series = cats.map(c=> ({name:c.name, arr: labels.map(()=> (Math.random()*10)|0)}));
-        let max=1; series.forEach(s=> s.arr.forEach(v=> max=Math.max(max,v)));
-        ctx.strokeStyle=getCssVar('--muted'); ctx.fillStyle=getCssVar('--muted'); ctx.font='12px sans-serif';
-        for(let i=0;i<=4;i++){ const y = padding.t + (H*(i/4)); ctx.beginPath(); ctx.moveTo(padding.l,y); ctx.lineTo(padding.l+W,y); ctx.stroke(); const val = Math.round(max*(1 - i/4)); ctx.fillText(minutesToHuman(val), 6, y+4); }
-        series.forEach(s=>{
-          const color1 = getCssVar('--accent2'); ctx.beginPath();
-          s.arr.forEach((v,i)=>{ const x = padding.l + (W*(i/(labels.length-1||1))); const y = padding.t + H*(1 - (v/max)); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
-          ctx.lineWidth=2; ctx.strokeStyle=color1; ctx.stroke();
-          ctx.lineTo(padding.l+W, padding.t+H); ctx.lineTo(padding.l, padding.t+H); ctx.closePath(); ctx.globalAlpha=0.06; ctx.fillStyle=color1; ctx.fill(); ctx.globalAlpha=1;
-        });
-      })();
+// ---------------------------
+// Echte LineChart-Daten
+// ---------------------------
+function drawLineChart(){
+  const ctx = document.getElementById('lineChart');
+  if(!ctx || !STATE.currentUser) return;
+
+  // Hole alle Kategorien des aktuellen Benutzers
+  idbGetAll(DB,'categories').then(cats=>{
+    // Sessions dieses Users (und ggf. LemGOesHANA) einsammeln
+    const sessions = [];
+    cats.forEach(cat=>{
+      if(cat.system && STATE.currentUser !== 'admin') return; // Nur Admin sieht alle Systemdaten
+      if(cat.sessions){
+        for(const s of cat.sessions){
+          if(s.username === STATE.currentUser || STATE.currentUser === 'admin'){
+            sessions.push({
+              category: cat.name,
+              durationMin: s.durationMin || 0,
+              timestamp: s.timestamp || Date.now()
+            });
+          }
+        }
+      }
+    });
+
+    if(sessions.length === 0){
+      const c = ctx.getContext('2d');
+      c.clearRect(0,0,ctx.width,ctx.height);
+      c.font = '16px sans-serif';
+      c.fillStyle = '#888';
+      c.fillText('Keine Daten vorhanden', 20, 30);
+      return;
     }
+
+    // Gruppiere nach Datum
+    const dailyTotals = {};
+    for(const s of sessions){
+      const date = new Date(s.timestamp);
+      const key = date.toISOString().substring(0,10);
+      dailyTotals[key] = (dailyTotals[key] || 0) + s.durationMin;
+    }
+
+    // Sortiere chronologisch
+    const dates = Object.keys(dailyTotals).sort();
+    const values = dates.map(d=> dailyTotals[d]);
+
+    // Canvas vorbereiten
+    const c = ctx.getContext('2d');
+    c.clearRect(0,0,ctx.width,ctx.height);
+
+    // Achsen / Linien
+    const margin = 40;
+    const w = ctx.width - margin*2;
+    const h = ctx.height - margin*2;
+    const maxVal = Math.max(...values);
+    const yScale = maxVal>0 ? h/maxVal : 1;
+    const xStep = w / Math.max(1, dates.length-1);
+
+    // Achsen zeichnen
+    c.strokeStyle = '#ccc';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(margin, margin);
+    c.lineTo(margin, margin+h);
+    c.lineTo(margin+w, margin+h);
+    c.stroke();
+
+    // Datenlinie
+    c.strokeStyle = '#4f46e5';
+    c.lineWidth = 2;
+    c.beginPath();
+    values.forEach((v,i)=>{
+      const x = margin + i*xStep;
+      const y = margin + h - v*yScale;
+      if(i===0) c.moveTo(x,y); else c.lineTo(x,y);
+    });
+    c.stroke();
+
+    // Punkte
+    c.fillStyle = '#4f46e5';
+    values.forEach((v,i)=>{
+      const x = margin + i*xStep;
+      const y = margin + h - v*yScale;
+      c.beginPath();
+      c.arc(x, y, 3, 0, 2*Math.PI);
+      c.fill();
+    });
+
+    // Achsenbeschriftung (Datum unten)
+    c.fillStyle = '#666';
+    c.font = '11px sans-serif';
+    dates.forEach((d,i)=>{
+      const x = margin + i*xStep - 15;
+      const y = margin + h + 15;
+      c.fillText(d.slice(5), x, y);
+    });
+
+    // Titel / Einheiten
+    c.fillStyle = '#444';
+    c.font = '13px sans-serif';
+    c.fillText('Tägliche Gesamtzeit (min)', margin, margin - 10);
+  });
+}
+
     
     // ---------------------------
     // Modals
