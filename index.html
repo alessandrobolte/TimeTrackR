@@ -193,6 +193,33 @@ async function loadSessionsFromCloud(username) {
     // ---------------------------
     async function init(){
       DB = await openDB('zm_db',1);
+      // 🩺 Absolute Sicherheitsprüfung: LemGOesHANA existiert immer
+try {
+  const allCats = await idbGetAll(DB, 'categories');
+  let lem = allCats.find(c => c.name === NON_DELETABLE_CATEGORY_NAME);
+  if (!lem) {
+    console.warn('⚠️ LemGOesHANA nicht gefunden – wird neu angelegt');
+    lem = {
+      id: uid(),
+      name: NON_DELETABLE_CATEGORY_NAME,
+      owner: 'system',
+      system: true,
+      sessions: []
+    };
+    await idbPut(DB, 'categories', lem);
+  } else {
+    // Repariere falls falsche Flags gesetzt
+    let changed = false;
+    if (!lem.system) { lem.system = true; changed = true; }
+    if (lem.owner !== 'system') { lem.owner = 'system'; changed = true; }
+    if (changed) {
+      await idbPut(DB, 'categories', lem);
+      console.log('🔧 LemGOesHANA repariert');
+    }
+  }
+} catch (err) {
+  console.error('❌ Fehler beim LemGOesHANA-Check:', err);
+}
       // 🩺 Sicherheitsprüfung: LemGOesHANA sicherstellen
 const catsNow = await idbGetAll(DB, 'categories');
 const hasLemGO = catsNow.some(c => c.name === NON_DELETABLE_CATEGORY_NAME);
