@@ -571,9 +571,8 @@ async function syncFromCloud() {
       renderStats();
       // greeting
       document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + (isAdmin? ' (Admin)':'') ;
-      // Adminpanel hinzufügen
 // ---------------------------
-// Adminpanel mit Userverwaltung
+// Adminpanel mit Userverwaltung (Dropdown + Buttons)
 // ---------------------------
 if (isAdmin) {
   const catsPanel = document.querySelector('.cats-panel');
@@ -585,16 +584,27 @@ if (isAdmin) {
       <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
       <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
       <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
-      <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
-      <button id="addUserBtn" class="small ghost">➕ Neuen Benutzer anlegen</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+        <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+        <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+      </div>
     `;
     catsPanel.appendChild(panel);
 
     document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
-    document.getElementById('resetUserPwBtn').addEventListener('click', resetUserPassword);
+    document.getElementById('resetUserPwBtn').addEventListener('click', async () => {
+      const sel = document.getElementById('userSelect');
+      const name = sel.value;
+      if (name) await resetUserPassword(name);
+    });
     document.getElementById('addUserBtn').addEventListener('click', addNewUser);
+
+    // Nach dem Rendern: Benutzerliste füllen
+    populateUserDropdown();
   }
 }
+
 
 
     }
@@ -1547,6 +1557,67 @@ async function addNewUser() {
 
   await idbPut(DB, 'users', newUser);
   showToast(`Neuer Benutzer "${displayName}" angelegt (Initialpasswort: Stadtwerke1).`);
+}
+// ---------------------------
+// Admin: Benutzerverwaltung (Dropdown + Reset/Add)
+// ---------------------------
+
+// Dropdown mit Benutzern befüllen
+async function populateUserDropdown() {
+  const users = await idbGetAll(DB, 'users');
+  const sel = document.getElementById('userSelect');
+  if (!sel) return;
+  sel.innerHTML = users
+    .map(u => `<option value="${u.username}">${u.displayName} (${u.username})</option>`)
+    .join('');
+}
+
+// Passwort eines ausgewählten Benutzers zurücksetzen
+async function resetUserPassword(username) {
+  const user = await idbGet(DB, 'users', username);
+  if (!user) {
+    alert('Benutzer nicht gefunden.');
+    return;
+  }
+
+  const confirmReset = confirm(
+    `Passwort von "${user.displayName}" (${user.username}) auf das Initialpasswort "Stadtwerke1" zurücksetzen?`
+  );
+  if (!confirmReset) return;
+
+  user.password = 'Stadtwerke1';
+  user.pwExpired = true;
+  await idbPut(DB, 'users', user);
+  showToast(`Passwort für ${user.displayName} wurde zurückgesetzt.`);
+}
+
+// Neuen Benutzer hinzufügen
+async function addNewUser() {
+  const username = prompt('Benutzername (Login-Name, klein geschrieben):');
+  if (!username) return;
+
+  const existing = await idbGet(DB, 'users', username);
+  if (existing) {
+    alert('Dieser Benutzername existiert bereits.');
+    return;
+  }
+
+  const displayName = prompt('Anzeigename (z. B. "Max Mustermann"):') || username;
+  const role = confirm('Soll der Benutzer Administratorrechte haben?')
+    ? 'Administrator'
+    : 'User';
+
+  const newUser = {
+    username,
+    password: 'Stadtwerke1',
+    displayName,
+    role,
+    pwExpired: true
+  };
+
+  await idbPut(DB, 'users', newUser);
+  await populateUserDropdown(); // Dropdown direkt aktualisieren
+  showToast(`Benutzer "${displayName}" wurde angelegt (Initialpasswort: Stadtwerke1).`);
 }
 
     // Done.
