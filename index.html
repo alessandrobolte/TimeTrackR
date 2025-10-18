@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zeitmanagement — LemGOesHANA</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
+<style>
+  :root{
+    --bg:#f3f4f6;
+    --panel:#ffffff;
+    --text:#0b1220;
+    --muted:#425066;
+    --accent1:#28a745;
+    --accent2:#3b82f6;
+    --radius:12px;
+    --shadow: 0 8px 24px rgba(15,23,42,0.06);
+  }
+  :root.dark{
+    --bg:#0b0b0c;
+    --panel:#0f1112;
+    --text:#e8e8e8;
+    --muted:#9aa0a6;
+    --accent1:#ff4d4f;
+    --accent2:#ff902b;
+    --shadow: 0 8px 28px rgba(0,0,0,0.6);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:20px;display:flex;justify-content:center;
+  }
+
+  .app{width:100%;max-width:1100px;}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  h1{margin:0;font-size:1.6rem}
+  .top-controls{display:flex;gap:10px;align-items:center}
+  button{background:var(--panel);border:1px solid rgba(0,0,0,0.06);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer;box-shadow:var(--shadow)}
+  .small{padding:6px 10px;font-size:0.9rem}
+  .ghost{background:transparent}
+  .accent{background:linear-gradient(90deg,var(--accent1),var(--accent2));border:none;color:#fff}
+  .danger{background:transparent;border:1px solid var(--accent1);color:var(--accent1)}
+
+  .top{display:flex;gap:16px;align-items:flex-start}
+  .cats-panel{flex:1;background:var(--panel);padding:16px;border-radius:var(--radius)}
+  .timer-panel{width:360px;min-width:260px;background:var(--panel);padding:18px;border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;gap:10px}
+
+  .category-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .category-card{padding:10px 12px;border-radius:10px;background:linear-gradient(90deg, rgba(0,0,0,0.02), transparent);display:flex;align-items:center;gap:12px;border:1px solid rgba(0,0,0,0.04)}
+  .category-name{font-weight:700}
+  .category-meta{font-size:0.85rem;color:var(--muted)}
+
+  .time-big{font-size:2.2rem;font-weight:800}
+  .timer-controls{display:flex;gap:8px;margin-top:8px}
+  select,input{padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--text)}
+  input[type="number"]{width:80px}
+
+  .actions-row{display:flex;gap:8px;align-items:center;margin-top:12px}
+  .centered{display:flex;justify-content:center}
+
+  .stats-panel{background:var(--panel);padding:14px;border-radius:var(--radius);margin-top:14px}
+  .stats-header{display:flex;align-items:center;justify-content:space-between}
+  .toggle-details{cursor:pointer;color:var(--muted);font-size:0.95rem}
+  .charts{display:grid;grid-template-columns:1fr 420px;gap:12px;margin-top:12px}
+  canvas{background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent);border-radius:10px;padding:8px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px dashed rgba(0,0,0,0.06)}
+  .sessions-list{max-height:220px;overflow:auto}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .modal{background:var(--panel);padding:18px;border-radius:12px;min-width:320px;max-width:720px}
+  .form-row{display:flex;gap:8px;margin-bottom:8px}
+  label{font-size:0.9rem;color:var(--muted);min-width:120px;display:inline-block}
+
+  @media (max-width:980px){ .charts{grid-template-columns:1fr} .timer-panel{width:100%} .top{flex-direction:column} }
+
+  .tooltip{position:absolute;padding:6px 8px;border-radius:6px;background:var(--panel);border:1px solid rgba(0,0,0,0.06);pointer-events:none;font-size:0.9rem;z-index:10000}
+  #toast{z-index:9999;backdrop-filter:blur(6px);}
+  :root:not(.dark) #toast{background:#0077cc;color:white}
+  .dark #toast{background:#ff6600;color:#fff}
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div>
+        <h1 id="appTitle">Zeitmanagement – Projekte & Aktivitäten</h1>
+        <div id="loading" style="display:none;color:var(--muted);font-size:0.9rem">⏳ Einloggen ... Lade Daten</div>
+      </div>
+      <div class="top-controls">
+        <div id="greeting" style="font-weight:600;color:var(--muted)"></div>
+        <button id="modeToggle" class="small" title="Theme wechseln">☀️</button>
+        <button id="logoutBtn" class="small ghost" style="display:none">Ausloggen</button>
+      </div>
+    </header>
+
+    <div id="mainContent">
+      <!-- Content rendered by JS -->
+    </div>
+
+    <div id="modalRoot"></div>
+  </div>
+
+  <script>
+    // ---------------------------
+    // Simple IndexedDB wrapper (promisified)
+    // ---------------------------
+    function openDB(name, version=1){
+      return new Promise((res, rej)=>{
+        const r = indexedDB.open(name, version);
+        r.onupgradeneeded = e => {
+          const db = e.target.result;
+          if(!db.objectStoreNames.contains('users')) db.createObjectStore('users',{keyPath:'username'});
+          if(!db.objectStoreNames.contains('categories')) db.createObjectStore('categories',{keyPath:'id'});
+          if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'k'});
+        };
+        r.onsuccess = e => res(e.target.result);
+        r.onerror = e => rej(e.target.error);
+      });
+    }
+    function idbGet(db, store, key){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const r=os.get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    function idbPut(db, store, val){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    function idbGetAll(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const r=os.getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    function idbDelete(db, store, key){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+    async function idbClear(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+    
+    // ---------------------------
+    // App Constants & initial data
+    // ---------------------------
+    const INIT_PW = 'Stadtwerke1';
+    const USERS = [
+      ['admin', INIT_PW, 'Projektleiter', 'Administrator'],
+      ['alessandro', INIT_PW, 'Alessandro Bolte', 'User'],
+      ['michael', INIT_PW, 'Michael Teuber', 'User'],
+      ['dominik', INIT_PW, 'Dominik Schulte', 'User'],
+      ['christiane', INIT_PW, 'Christiane Kuhlemann', 'User'],
+      ['fabian', INIT_PW, 'Fabian Brinkmann', 'User'],
+      ['kati', INIT_PW, 'Kati Kretzschmar', 'User'],
+      ['denise', INIT_PW, 'Denise Carnovale', 'User'],
+      ['philip', INIT_PW, 'Philip Rolf', 'User'],
+      ['marcel', INIT_PW, 'Marcel Sander', 'User'],
+      ['yannik', INIT_PW, 'Yannik Siebert', 'User']
+    ];
+    const NON_DELETABLE_CATEGORY_NAME = 'LemGOesHANA';
+    
+    let DB = null;
+    let STATE = { currentUser: null };
+    
+    // ---------------------------
+    // Utils
+    // ---------------------------
+    const uid = ()=> Math.random().toString(36).slice(2,9);
+    const minutesToHuman = min => { const h = Math.floor(min/60); const m = Math.round(min%60); return `${h}h ${m}m`; };
+    const msToHms = ms => { if(!isFinite(ms)) return '--:--:--'; const secs=Math.floor(ms/1000); const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60), s=secs%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
+    
+    // ---------------------------
+    // Initialization: DB and default data
+    // ---------------------------
+    async function init(){
+      DB = await openDB('zm_db',1);
+      // ensure users exist
+      const existing = await idbGetAll(DB,'users');
+      if(!existing || existing.length === 0){
+        for(const u of USERS){
+          await idbPut(DB,'users',{username:u[0], password:u[1], displayName:u[2], role:u[3], pwExpired:true});
+        }
+      }
+    
+      // Variant 2: clean categories on first boot after change
+      const resetFlag = localStorage.getItem('zm_categories_reset_v2') === '1';
+      if(!resetFlag){
+        await idbClear(DB,'categories');
+        const id = uid();
+        await idbPut(DB,'categories',{id, name:NON_DELETABLE_CATEGORY_NAME, owner:'system', system:true, sessions:[]});
+        localStorage.setItem('zm_categories_reset_v2','1');
+      } else {
+        // ensure LemGOesHANA exists and is marked system:true
+        const cats = await idbGetAll(DB,'categories');
+        const lem = (cats||[]).find(c=>c.name===NON_DELETABLE_CATEGORY_NAME);
+        if(!lem){
+          const id = uid();
+          await idbPut(DB,'categories',{id, name:NON_DELETABLE_CATEGORY_NAME, owner:'system', system:true, sessions:[]});
+        } else if(!lem.system){
+          lem.system = true; lem.owner = 'system';
+          await idbPut(DB,'categories',lem);
+        }
+      }
+    
+      // theme
+      const theme = localStorage.getItem('zm_theme') || 'light';
+      document.documentElement.classList.toggle('dark', theme==='dark');
+      document.getElementById('modeToggle').textContent = theme==='light' ? '☀️' : '🌙';
+    
+      // compact toast (top-right)
+      ensureToastStyles();
+    
+      bindUI();
+      renderLogin();
+    }
+    
+    // ---------------------------
+    // UI bindings and helpers
+    // ---------------------------
+    function setLoading(show, text=''){ const el=document.getElementById('loading'); if(show){ el.style.display='block'; el.textContent = text || '⏳ Einloggen ... Lade Daten'; } else el.style.display='none'; }
+    function showToast(msg, ms=2200){
+      let t=document.getElementById('toast');
+      if(!t){
+        t=document.createElement('div');
+        t.id='toast';
+        // baseline styles; theme colors kommen aus CSS-Variablen
+        t.style.position='fixed';
+        t.style.top='16px';
+        t.style.right='16px';
+        t.style.maxWidth='280px';
+        t.style.padding='10px 12px';
+        t.style.borderRadius='10px';
+        t.style.boxShadow='var(--shadow)';
+        t.style.fontSize='0.95rem';
+        t.style.display='none';
+        t.style.zIndex='99999';
+        document.body.appendChild(t);
+      }
+      t.textContent=msg;
+      t.style.display='block';
+      t.style.opacity='1';
+      setTimeout(()=>{
+        t.style.opacity='0';
+        setTimeout(()=>t.style.display='none',400);
+      },ms);
+    }
+    function ensureToastStyles(){
+      // Nothing else to do (colors kommen aus globalem CSS),
+      // aber falls Styles überschrieben waren, setzen wir sie hier erneut.
+      const t=document.getElementById('toast');
+      if(t){
+        t.style.position='fixed';
+        t.style.top='16px';
+        t.style.right='16px';
+        t.style.maxWidth='280px';
+        t.style.padding='10px 12px';
+        t.style.borderRadius='10px';
+        t.style.boxShadow='var(--shadow)';
+        t.style.zIndex='99999';
+      }
+    }
+    
+    function bindUI(){
+      document.getElementById('modeToggle').addEventListener('click', ()=>{
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('zm_theme', isDark? 'dark':'light');
+        document.getElementById('modeToggle').textContent = isDark? '🌙':'☀️';
+      });
+      document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+        STATE.currentUser = null;
+        document.getElementById('greeting').textContent='';
+        renderLogin();
+      });
+    }
+    
+    // ---------------------------
+    // Login Flow (client-side login for demo)
+    // ---------------------------
+    async function renderLogin(){
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
+          <div style="width:380px;padding:18px;border-radius:12px;background:var(--panel);box-shadow:var(--shadow)">
+            <h2 style="margin-top:0">Login 🔐</h2>
+            <div style="margin-bottom:8px;color:var(--muted)">Bitte melde dich mit deinem Benutzernamen an.</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <input id="loginUser" placeholder="Benutzername" autofocus />
+              <input id="loginPw" placeholder="Passwort" type="password" />
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button id="loginBtn" class="accent">Einloggen</button>
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:0.9rem;color:var(--muted)">Tipp: Benutzerliste ist vordefiniert.</div>
+          </div>
+        </div>
+      `;
+    
+      document.getElementById('loginBtn').addEventListener('click', async ()=>{
+        const u = document.getElementById('loginUser').value.trim(); const p = document.getElementById('loginPw').value;
+        if(!u || !p){ alert('Bitte Benutzername und Passwort eingeben.'); return; }
+        setLoading(true,'⏳ Einloggen ... Lade Daten');
+        try{
+          const user = await idbGet(DB,'users',u);
+          if(!user){ setLoading(false); alert('Benutzer nicht gefunden.'); return; }
+          if(user.password !== p){ setLoading(false); alert('Falsches Passwort.'); return; }
+          // success
+          STATE.currentUser = user.username;
+          localStorage.setItem('zm_lastUser', user.username);
+          document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
+          document.getElementById('logoutBtn').style.display='inline-block';
+          setLoading(false);
+          // greeting modal
+          const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+          setTimeout(()=>{ closeModal(); if(user.pwExpired){ renderChangePassword(true); } else { renderDashboard(); } },900);
+        }catch(e){ setLoading(false); alert('Fehler beim Einloggen'); }
+      });
+    }
+    
+    // ---------------------------
+    // Password change (forced on first login)
+    // ---------------------------
+    async function renderChangePassword(forced=false){
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
+          <div style="width:420px;padding:18px;border-radius:12px;background:var(--panel);box-shadow:var(--shadow)">
+            <h2>Passwort ändern 🔑</h2>
+            <div style="margin-bottom:8px;color:var(--muted)">Bitte wähle ein neues Passwort (mind. 6 Zeichen).</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <input id="newPw" placeholder="Neues Passwort" type="password" />
+              <input id="newPw2" placeholder="Neues Passwort wiederholen" type="password" />
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button id="savePwBtn" class="accent">Speichern</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('savePwBtn').addEventListener('click', async ()=>{
+        const a = document.getElementById('newPw').value; const b = document.getElementById('newPw2').value;
+        if(!a || a.length<6){ alert('Passwort zu kurz (mind. 6 Zeichen).'); return; }
+        if(a!==b){ alert('Passwörter stimmen nicht überein.'); return; }
+        const user = await idbGet(DB,'users',STATE.currentUser);
+        user.password = a; user.pwExpired = false; await idbPut(DB,'users',user);
+        showToast('Passwort geändert ✅'); renderDashboard();
+      });
+    }
+    
+    // ---------------------------
+    // Visibility helpers
+    // ---------------------------
+    async function getVisibleCategories(){
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const cats = await idbGetAll(DB,'categories');
+      if(!user) return [];
+      const isAdmin = user.role === 'Administrator';
+      if(isAdmin){
+        // Admin sieht NUR LemGOesHANA (alle Sessions darin)
+        return cats.filter(c=> c.system === true && c.name === NON_DELETABLE_CATEGORY_NAME);
+      } else {
+        // User sieht eigene Kategorien + LemGOesHANA
+        return cats.filter(c=> (c.owner === STATE.currentUser) || (c.system === true && c.name === NON_DELETABLE_CATEGORY_NAME));
+      }
+    }
+    function filterSessionsForViewer(cat, sessions){
+      if(!sessions) return [];
+      // Admin: alle Sessions in LemGOesHANA
+      // User: nur eigene Sessions (auch in LemGOesHANA)
+      const isAdminPromise = idbGet(DB,'users',STATE.currentUser).then(u=> u && u.role==='Administrator');
+      // return a proxy promise consumer uses with await
+      return (async()=>{
+        const isAdmin = await isAdminPromise;
+        if(isAdmin) return cat.system ? sessions.slice() : []; // Admin hat nur LemGOesHANA im Blick
+        return sessions.filter(s=> (s && s.username === STATE.currentUser));
+      })();
+    }
+    
+    // ---------------------------
+    // Dashboard (User + Admin variations)
+    // ---------------------------
+    async function renderDashboard(){
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      if(!user) return renderLogin();
+      const isAdmin = user.role === 'Administrator';
+      const catsVisible = await getVisibleCategories();
+    
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="top">
+          <section class="cats-panel" aria-labelledby="catsTitle">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;gap:8px;align-items:center">
+                ${isAdmin ? '' : '<button id="addCategoryBtn" class="accent small">Kategorie hinzufügen</button>'}
+                ${isAdmin ? '' : '<button id="delModeBtn" class="ghost small" aria-pressed="false">Löschen</button>'}
+              </div>
+              <div style="text-align:right"><div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div></div>
+            </div>
+            <div class="category-list" id="categoryList"></div>
+            <div class="actions-row" style="margin-top:12px">
+              <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
+              <button id="exportBtn" class="small ghost">Export (CSV)</button>
+              <button id="importBtn" class="small ghost">Import</button>
+              <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
+              ${isAdmin ? '' : '<button id="resetBtn" class="small danger">Reset</button>'}
+            </div>
+            <div class="centered" style="margin-top:10px"><button id="forgotBtn" class="accent">Zeit stoppen vergessen?</button></div>
+          </section>
+    
+          <aside class="timer-panel" aria-label="Timer Panel">
+            <div style="font-size:0.9rem;color:var(--muted)">Aktueller Timer</div>
+            <div class="time-big" id="activeTimerDisplay">--:--:--</div>
+            <div style="width:100%;display:flex;gap:8px;align-items:center">
+              <label for="activeCategorySelect" style="min-width:110px;color:var(--muted)">Kategorie</label>
+              <select id="activeCategorySelect" aria-label="Aktive Kategorie" style="flex:1"></select>
+            </div>
+            <div class="timer-controls" style="width:100%;justify-content:center">
+              <button id="startBtn" class="small">Start</button>
+              <button id="stopBtn" class="small">Stop</button>
+            </div>
+            <div style="font-size:0.9rem;color:var(--muted);text-align:center;margin-top:6px">Timer läuft auch nach Reload weiter</div>
+            <button id="undockBtn" class="small ghost" style="margin-top:6px">Timer abdocken</button>
+          </aside>
+        </div>
+    
+        <section class="stats-panel" id="statsPanel">
+          <div class="stats-header">
+            <div style="display:flex;gap:10px;align-items:center">
+              <div id="statsTitle" style="font-weight:700">Statistiken</div>
+              <div id="rangeButtons" style="display:flex;gap:6px">
+                <button class="small" data-range="7">Letzte 7 Tage</button>
+                <button class="small" data-range="14">Letzte 14 Tage</button>
+                <button class="small" data-range="30">30 Tage</button>
+                <button class="small" data-range="all">Gesamt</button>
+              </div>
+            </div>
+            <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
+          </div>
+    
+          <div id="statsContent" style="display:none;margin-top:10px">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+              <div style="flex:1;min-width:320px">
+                <table id="statsTable"><thead><tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr></thead><tbody></tbody></table>
+              </div>
+              <div style="width:420px"><canvas id="barChart" width="420" height="220" role="img"></canvas></div>
+            </div>
+    
+            <div style="margin-top:12px">
+              <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
+              <canvas id="lineChart" width="980" height="240" style="width:100%"></canvas>
+            </div>
+    
+            <div style="margin-top:12px">
+              <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
+              <div class="sessions-list"><table id="sessionsTable"><thead><tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th>${isAdmin ? '' : '<th>Aktion</th>'}</tr></thead><tbody></tbody></table></div>
+            </div>
+          </div>
+        </section>
+      `;
+    
+      // wire up actions
+      if(!isAdmin){
+        document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
+          const name = prompt('Name der Kategorie:'); if(!name) return;
+          if(name.trim().toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase()){ alert('Diese Kategorie ist reserviert.'); return; }
+          const existing = await idbGetAll(DB,'categories');
+          if(existing.some(c=> c.owner===STATE.currentUser && c.name.toLowerCase()===name.toLowerCase())){ alert('Kategorie existiert bereits.'); return; }
+          const id = uid(); await idbPut(DB,'categories',{id,name,owner:STATE.currentUser,system:false,sessions:[]}); renderDashboard();
+        });
+    
+        document.getElementById('delModeBtn').addEventListener('click', ()=>{
+          const btn=document.getElementById('delModeBtn');
+          const pressed = btn.getAttribute('aria-pressed')==='true';
+          btn.setAttribute('aria-pressed', String(!pressed));
+          renderCategoryList(); // re-render with delete buttons
+        });
+      }
+    
+      document.getElementById('exportBtn').addEventListener('click', exportCSV);
+      document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+      document.getElementById('importFile').addEventListener('change', async e=>{
+        const f=e.target.files[0]; if(!f) return; const txt=await f.text(); parseImportCSV(txt); e.target.value='';
+      });
+      if(!isAdmin){
+        document.getElementById('resetBtn').addEventListener('click', async ()=>{
+          if(!confirm('Reset: Eigene Kategorien und Zeiten löschen?')) return;
+          const all = await idbGetAll(DB,'categories');
+          for(const c of all){ if(c.owner === STATE.currentUser && !c.system) await idbDelete(DB,'categories',c.id); }
+          showToast('Eigene Kategorien gelöscht'); renderDashboard();
+        });
+      }
+      document.getElementById('refreshBtn').addEventListener('click', ()=>{ renderDashboard(); showToast('Daten neu geladen ✅'); });
+      document.getElementById('forgotBtn').addEventListener('click', openManualModal);
+    
+      // timer bindings
+      document.getElementById('startBtn').addEventListener('click', startTimer);
+      document.getElementById('stopBtn').addEventListener('click', stopTimer);
+      document.getElementById('undockBtn').addEventListener('click', openMiniTimerWindow);
+    
+      // stats toggle
+      document.getElementById('toggleStats').addEventListener('click', ()=>{
+        const cont = document.getElementById('statsContent');
+        const open = cont.style.display==='block';
+        cont.style.display = open? 'none':'block';
+        document.getElementById('toggleStats').textContent = open? 'Ausklappen ▾':'Einklappen ▴';
+        drawBarChart(); drawLineChart();
+      });
+    
+      // render lists and stats
+      await renderCategoryList();
+      renderStats();
+      // greeting
+      document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + (isAdmin? ' (Admin)':'') ;
+    }
+    
+    // ---------------------------
+    // Categories list render (with visibility & delete rules)
+    // ---------------------------
+    async function renderCategoryList(){
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      const list = document.getElementById('categoryList');
+      if(!list) return;
+      list.innerHTML='';
+      const sel = document.getElementById('activeCategorySelect');
+      if(sel) sel.innerHTML='';
+    
+      const cats = await getVisibleCategories();
+      const delMode = !isAdmin && document.getElementById('delModeBtn') && document.getElementById('delModeBtn').getAttribute('aria-pressed')==='true';
+    
+      for(const c of cats){
+        const card = document.createElement('div'); card.className='category-card'; card.dataset.id=c.id;
+        const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column';
+        const name = document.createElement('div'); name.className='category-name'; name.textContent = c.name;
+    
+        // aggregate only visible sessions
+        const visSessions = await filterSessionsForViewer(c, c.sessions||[]);
+        const totalMin = visSessions.reduce((s,x)=> s + (x.durationMin || 0),0);
+        const meta = document.createElement('div'); meta.className='category-meta';
+        meta.textContent = `${totalMin} min • ${visSessions.length} sessions`;
+    
+        left.appendChild(name); left.appendChild(meta);
+    
+        const actions = document.createElement('div');
+        actions.style.display='flex'; actions.style.alignItems='center'; actions.style.gap='8px';
+    
+        // Admin darf nichts starten/löschen außerhalb LemGOesHANA; Start ist ok für alle sichtbaren
+        const startBtnLocal = document.createElement('button');
+        startBtnLocal.className='small'; startBtnLocal.textContent='Start';
+        startBtnLocal.title='Timer für diese Kategorie starten';
+        startBtnLocal.onclick = ()=>{ const select = document.getElementById('activeCategorySelect'); if(select){ select.value = c.id; } startTimer(); };
+        actions.appendChild(startBtnLocal);
+    
+        const detailsBtn = document.createElement('button');
+        detailsBtn.className='small ghost'; detailsBtn.textContent='Details';
+        detailsBtn.onclick = ()=> showCategoryDetails(c.id);
+        actions.appendChild(detailsBtn);
+    
+        if(delMode && !c.system && c.owner === STATE.currentUser){
+          const del = document.createElement('button'); del.className='small danger'; del.textContent='Löschen';
+          del.onclick = async ()=>{
+            if(!confirm('Kategorie und alle Sitzungen löschen?')) return;
+            await idbDelete(DB,'categories',c.id);
+            renderCategoryList(); showToast('Kategorie gelöscht');
+          };
+          actions.appendChild(del);
+        }
+    
+        card.appendChild(left); card.appendChild(actions); list.appendChild(card);
+    
+        if(sel){
+          const option = document.createElement('option'); option.value=c.id; option.textContent=c.name; sel.appendChild(option);
+        }
+      }
+    }
+    
+    // ---------------------------
+    // Timer logic
+    // ---------------------------
+    async function startTimer(){
+      const sel = document.getElementById('activeCategorySelect');
+      if(!sel || !sel.value){ alert('Bitte eine Kategorie anlegen und auswählen.'); return; }
+      const active = JSON.parse(localStorage.getItem('zm_active') || 'null');
+      if(active && active.username === STATE.currentUser){ alert('Es läuft bereits ein Timer.'); return; }
+      const start = Date.now();
+      const entry = { id: uid(), username: STATE.currentUser, start, durationMin:null, note:'', categoryId: sel.value };
+      localStorage.setItem('zm_active', JSON.stringify(entry));
+      showToast('Timer gestartet');
+    }
+    async function stopTimer(){
+      const raw = localStorage.getItem('zm_active'); if(!raw){ alert('Kein laufender Timer.'); return; }
+      const a = JSON.parse(raw);
+      if(a.username !== STATE.currentUser){ alert('Ein anderer Benutzer hat einen laufenden Timer im Browser.'); return; }
+      const durMin = Math.max(1, Math.round((Date.now() - a.start)/60000));
+      // Session-Details wie im Dashboard
+      const note = prompt('Kurze Beschreibung (optional):') || '';
+    
+      // store into category sessions (respect visibility rules by writing but UI filters on read)
+      const cat = await idbGet(DB,'categories',a.categoryId);
+      if(!cat){ alert('Kategorie nicht gefunden'); localStorage.removeItem('zm_active'); return; }
+      // Admin soll nicht in fremden Kategorien schreiben können (nur LemGOesHANA)
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      if(isAdmin && !cat.system){
+        alert('Admin kann nur in LemGOesHANA Zeiten erfassen.'); localStorage.removeItem('zm_active'); return;
+      }
+    
+      cat.sessions = cat.sessions || [];
+      cat.sessions.push({ id: a.id, username: a.username, durationMin: durMin, note });
+      await idbPut(DB,'categories',cat);
+      localStorage.removeItem('zm_active');
+      showToast('Zeit gestoppt ✓'); renderDashboard();
+    }
+    
+    // keep display ticking
+    setInterval(()=>{
+      const raw=localStorage.getItem('zm_active'); const disp = document.getElementById('activeTimerDisplay');
+      if(raw){
+        try{
+          const a=JSON.parse(raw); const ms = Date.now() - a.start;
+          if(disp) disp.textContent = msToHms(ms);
+        }catch(e){ if(disp) disp.textContent='--:--:--'; }
+      } else if(disp) disp.textContent='--:--:--';
+    },500);
+    
+    // ---------------------------
+    // Manual entry modal (only duration)
+    // ---------------------------
+    async function openManualModal(){
+      const catsVisible = await getVisibleCategories();
+      // Nur in Kategorien erfassen, in die der User schreiben darf:
+      // User: eigene + LemGOesHANA; Admin: nur LemGOesHANA
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      const catsWritable = catsVisible.filter(c => isAdmin ? c.system : true);
+    
+      const selOptions = catsWritable.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      const modal = openModal(
+        `<h3>Manuelles Nachtragen</h3>
+         <div style="margin-top:8px"><label>Kategorie</label><select id="mcat">${selOptions}</select></div>
+         <div style="margin-top:8px"><label>Dauer (Stunden)</label><input id="mhours" type="number" min="0" value="0" /> 
+           <label style="margin-left:8px">Minuten</label><input id="mmins" type="number" min="0" max="59" value="30" /></div>
+         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+           <button id="madd" class="accent">Hinzufügen</button><button id="mclose" class="small">Abbrechen</button>
+         </div>`
+      );
+      modal.querySelector('#mclose').onclick = ()=> closeModal();
+      modal.querySelector('#madd').onclick = async ()=>{
+        const catId = modal.querySelector('#mcat').value; const h = parseInt(modal.querySelector('#mhours').value||'0',10); const m = parseInt(modal.querySelector('#mmins').value||'0',10);
+        const dur = h*60 + m; if(dur<=0){ alert('Bitte Dauer angeben.'); return; }
+        const note = prompt('Kurze Beschreibung (optional):') || '';
+        const cat = await idbGet(DB,'categories',catId); cat.sessions = cat.sessions || [];
+        cat.sessions.push({id: uid(), username: STATE.currentUser, durationMin: dur, note});
+        await idbPut(DB,'categories',cat);
+        closeModal(); showToast('Manuelle Zeit hinzugefügt'); renderDashboard();
+      };
+    }
+    
+    // ---------------------------
+    // Category details (visibility-safe)
+    // ---------------------------
+    async function showCategoryDetails(id){
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      const c = await idbGet(DB,'categories',id); if(!c) return;
+    
+      // Sichtbarkeit prüfen:
+      if(isAdmin){
+        // Admin darf nur LemGOesHANA einsehen
+        if(!c.system){ alert('Admin darf nur LemGOesHANA ansehen.'); return; }
+      } else {
+        // user: eigene Kategorien + LemGOesHANA
+        if(!(c.owner===STATE.currentUser || c.system)){ alert('Nicht berechtigt.'); return; }
+      }
+    
+      const sessions = await filterSessionsForViewer(c, c.sessions||[]);
+      const rows = sessions.map((s,idx)=>`
+        <tr>
+          <td>${escapeHtml(s.username || '')}</td>
+          <td>${minutesToHuman(s.durationMin||0)}</td>
+          <td contenteditable="${isAdmin? 'false':'true'}" data-idx="${idx}">${escapeHtml(s.note||'')}</td>
+          ${ isAdmin ? '' : `<td><button data-idx="${idx}" class="small">Löschen</button></td>`}
+        </tr>`).join('');
+    
+      const modal = openModal(
+        `<h3>Details — ${escapeHtml(c.name)}</h3>
+         <div style="max-height:320px;overflow:auto;margin-top:8px">
+           <table style='width:100%'><thead>
+             <tr><th>Benutzer</th><th>Dauer</th><th>Notiz</th>${isAdmin? '' : '<th>Aktion</th>'}</tr>
+           </thead><tbody>${rows}</tbody></table>
+         </div>
+         <div style="font-size:0.8rem;color:var(--muted);margin-top:6px">
+           ${isAdmin? 'Admin-Ansicht: nur LemGOesHANA, alle Sessions sichtbar.' : 'Notizen sind editierbar. Eigene Sessions kannst du löschen.'}
+         </div>`
+      );
+    
+      if(!isAdmin){
+        // Note edit
+        modal.querySelectorAll('td[contenteditable="true"]').forEach(td=>{
+          td.addEventListener('blur', async e=>{
+            const idx = parseInt(td.dataset.idx,10);
+            const visible = await filterSessionsForViewer(c, c.sessions||[]);
+            const sVisible = visible[idx];
+            if(!sVisible) return;
+            // finde echte Session im Original-Array
+            const realIdx = (c.sessions||[]).findIndex(r => r.id===sVisible.id);
+            if(realIdx>=0){
+              c.sessions[realIdx].note = td.textContent.trim();
+              await idbPut(DB,'categories',c);
+            }
+          });
+        });
+        // Delete own sessions only
+        modal.querySelectorAll('button.small').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const idx = parseInt(b.dataset.idx,10);
+            const visible = await filterSessionsForViewer(c, c.sessions||[]);
+            const sVisible = visible[idx];
+            if(!sVisible) return;
+            if(sVisible.username !== STATE.currentUser){ alert('Du kannst nur eigene Sessions löschen.'); return; }
+            if(!confirm('Session löschen?')) return;
+            const realIdx = (c.sessions||[]).findIndex(r => r.id===sVisible.id);
+            if(realIdx>=0){
+              c.sessions.splice(realIdx,1);
+              await idbPut(DB,'categories',c);
+              showToast('Session gelöscht'); closeModal(); renderDashboard();
+            }
+          });
+        });
+      }
+    }
+    
+    // ---------------------------
+    // Admin view (keine separate UI mehr nötig – Details nutzt Regeln)
+    // ---------------------------
+    
+    // ---------------------------
+    // CSV Export/Import (export respektiert Sichtbarkeit beim Lesen)
+    // ---------------------------
+    async function exportCSV(){
+      const cats = await getVisibleCategories();
+      const rows=['category,categoryId,username,durationMin,note'];
+      for(const c of cats){
+        const vis = await filterSessionsForViewer(c, c.sessions||[]);
+        vis.forEach(s=> rows.push(`${escapeCsv(c.name)},${c.id},${escapeCsv(s.username||'')},${s.durationMin||''},${escapeCsv(s.note||'')}`));
+      }
+      downloadBlob(rows.join('\n'),'zeitmanagement_export.csv');
+    }
+    function downloadBlob(text, name){ const blob = new Blob([text],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+    function escapeCsv(t){ if(t==null) return ''; const s=String(t); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"'; return s; }
+    function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    
+    async function parseImportCSV(txt){
+      const lines = txt.split(/\r?\n/).filter(Boolean); if(lines.length<=1){ alert('Keine Daten in CSV gefunden'); return; } lines.shift();
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      for(const line of lines){
+        const parts = csvSplit(line); if(parts.length<5) continue;
+        const catName = parts[0]; const catIdCsv = parts[1]; const username = parts[2] || STATE.currentUser; const dur = parts[3] ? parseInt(parts[3],10):0; const note = parts[4]||'';
+        let cats = await idbGetAll(DB,'categories');
+        let cat = cats.find(c=> c.id===catIdCsv) || cats.find(c=> c.name===catName);
+        if(!cat){
+          // Admin importiert nur nach LemGOesHANA; User importiert in eigene Kategorien
+          if(isAdmin){
+            cat = cats.find(c=> c.system) || {id:uid(),name:NON_DELETABLE_CATEGORY_NAME,owner:'system',system:true,sessions:[]};
+          } else {
+            cat = {id:uid(),name:catName,owner:STATE.currentUser,system:false,sessions:[]};
+          }
+          await idbPut(DB,'categories',cat);
+        }
+        // Schreibschutz: Admin nur in LemGOesHANA
+        if(isAdmin && !cat.system) continue;
+        cat.sessions = cat.sessions || [];
+        cat.sessions.push({id: uid(), username: STATE.currentUser, durationMin: dur, note});
+        await idbPut(DB,'categories',cat);
+      }
+      showToast('CSV importiert ✅'); renderDashboard();
+    }
+    function csvSplit(line){
+      const out=[]; let cur=''; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(inQ){
+          if(ch==='"' && line[i+1]==='"'){ cur+='"'; i++; }
+          else if(ch==='"'){ inQ=false; }
+          else cur+=ch;
+        } else {
+          if(ch===','){ out.push(cur); cur=''; }
+          else if(ch==='"'){ inQ=true; }
+          else cur+=ch;
+        }
+      }
+      out.push(cur); return out;
+    }
+    
+    // ---------------------------
+    // Stats & charts (respecting visibility)
+    // ---------------------------
+    let currentRange='7';
+    async function renderStats(){
+      const table = document.querySelector('#statsTable tbody'); const sessionsTable = document.querySelector('#sessionsTable tbody');
+      if(!table) return;
+    
+      const cats = await getVisibleCategories();
+      const agg = [];
+      for(const c of cats){
+        const vis = await filterSessionsForViewer(c, c.sessions||[]);
+        let totalMin=0; let sessions=0;
+        vis.forEach(s=>{ const dur = s.durationMin || 0; totalMin += dur; if(dur>0) sessions++; });
+        // days/perDay/perWeek sind Schätzwerte wie zuvor
+        const days = 30; const perDay = totalMin/days; const perWeek = totalMin/7;
+        agg.push({id:c.id,name:c.name,totalMin,perDay,perWeek,sessions});
+      }
+    
+      table.innerHTML = '';
+      agg.forEach(a=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(a.name)}</td><td>${minutesToHuman(Math.round(a.totalMin))}</td><td>${Math.round(a.perDay)} min</td><td>${Math.round(a.perWeek)} min</td><td>${a.sessions}</td>`;
+        table.appendChild(tr);
+      });
+    
+      // sessions list (flatten)
+      const all = [];
+      for(const c of cats){
+        const vis = await filterSessionsForViewer(c, c.sessions||[]);
+        vis.forEach(s=> all.push({cat:c.name, dur:s.durationMin, note:s.note, user:s.username}));
+      }
+      sessionsTable.innerHTML = all.map(s=>
+        `<tr><td>${escapeHtml(s.user||'')}</td><td>${escapeHtml(s.cat)}</td><td>${minutesToHuman(s.dur)}</td><td>${escapeHtml(s.note||'')}</td>${/* no action col here */ ''}</tr>`
+      ).join('');
+    
+      drawBarChart(); drawLineChart();
+    }
+    
+    function drawBarChart(){
+      const canvas = document.getElementById('barChart'); if(!canvas) return;
+      const ctx = canvas.getContext('2d'); const w=canvas.width, h=canvas.height; ctx.clearRect(0,0,w,h);
+      (async()=>{
+        const cats = await getVisibleCategories();
+        const totals = [];
+        for(const c of cats){
+          const vis = await filterSessionsForViewer(c, c.sessions||[]);
+          totals.push(vis.reduce((a,s)=> a + (s.durationMin||0),0));
+        }
+        const max = Math.max(1,...totals);
+        const padding=30; const count=Math.max(1,cats.length);
+        const barW=Math.max(20,(w-padding*2)/count - 8);
+        cats.forEach((c,i)=>{
+          const val=totals[i];
+          const x=padding + i*(barW+8);
+          const hBar=(val/max)*(h-60);
+          const y=h-30-hBar;
+          const grad = ctx.createLinearGradient(x,y,x,y+hBar);
+          grad.addColorStop(0,getCssVar('--accent1')); grad.addColorStop(1,getCssVar('--accent2'));
+          ctx.fillStyle=grad; roundRect(ctx,x,y,barW,hBar,8); ctx.fill();
+          ctx.fillStyle=getCssVar('--muted'); ctx.font='12px sans-serif'; ctx.fillText(c.name||'—', x, h-10);
+          ctx.fillStyle=getCssVar('--text'); ctx.font='11px sans-serif'; ctx.fillText(minutesToHuman(Math.round(val)), x, Math.max(12,y-6));
+        });
+      })();
+    }
+    function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+    function getCssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#fff'; }
+    
+    function drawLineChart(){
+      const canvas = document.getElementById('lineChart'); if(!canvas) return;
+      const ctx = canvas.getContext('2d'); const rect = canvas.getBoundingClientRect();
+      const DPR = window.devicePixelRatio || 1; canvas.width = Math.floor(rect.width * DPR); canvas.height = Math.floor(240 * DPR);
+      ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,rect.width,240);
+      (async()=>{
+        const cats = await getVisibleCategories();
+        const labels = Array.from({length:30},(_,i)=>`D${i+1}`);
+        const padding = {l:40,r:20,t:20,b:40}; const W = rect.width - padding.l - padding.r; const H = 240 - padding.t - padding.b;
+        // Demo-Serien wie vorher (keine echten Tagesdaten)
+        const series = cats.map(c=> ({name:c.name, arr: labels.map(()=> (Math.random()*10)|0)}));
+        let max=1; series.forEach(s=> s.arr.forEach(v=> max=Math.max(max,v)));
+        ctx.strokeStyle=getCssVar('--muted'); ctx.fillStyle=getCssVar('--muted'); ctx.font='12px sans-serif';
+        for(let i=0;i<=4;i++){ const y = padding.t + (H*(i/4)); ctx.beginPath(); ctx.moveTo(padding.l,y); ctx.lineTo(padding.l+W,y); ctx.stroke(); const val = Math.round(max*(1 - i/4)); ctx.fillText(minutesToHuman(val), 6, y+4); }
+        series.forEach(s=>{
+          const color1 = getCssVar('--accent2'); ctx.beginPath();
+          s.arr.forEach((v,i)=>{ const x = padding.l + (W*(i/(labels.length-1||1))); const y = padding.t + H*(1 - (v/max)); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+          ctx.lineWidth=2; ctx.strokeStyle=color1; ctx.stroke();
+          ctx.lineTo(padding.l+W, padding.t+H); ctx.lineTo(padding.l, padding.t+H); ctx.closePath(); ctx.globalAlpha=0.06; ctx.fillStyle=color1; ctx.fill(); ctx.globalAlpha=1;
+        });
+      })();
+    }
+    
+    // ---------------------------
+    // Modals
+    // ---------------------------
+    function openModal(innerHTML){
+      closeModal();
+      const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
+      const modal = document.createElement('div'); modal.className='modal';
+      modal.innerHTML = innerHTML + `<div style="text-align:right;margin-top:8px"><button id="closeModal" class="small">Schließen</button></div>`;
+      backdrop.appendChild(modal); document.getElementById('modalRoot').appendChild(backdrop);
+      backdrop.querySelector('#closeModal').onclick = ()=> closeModal();
+      return modal;
+    }
+    function closeModal(){ const root=document.getElementById('modalRoot'); root.innerHTML=''; }
+    
+    // ---------------------------
+    // startup + Auto-Login (Variante 2)
+    // ---------------------------
+    init();
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      const lastUser = localStorage.getItem('zm_lastUser');
+      if(lastUser){
+        const user = await idbGet(DB,'users',lastUser);
+        if(user){
+          STATE.currentUser = user.username;
+          document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
+          document.getElementById('logoutBtn').style.display='inline-block';
+          if(user.pwExpired){
+            renderChangePassword(true);
+          } else {
+            renderDashboard();
+          }
+        }
+      }
+    });
+    
+    // ---------------------------
+    // Timer abdocken / Mini-Fenster (Popup mit Theme & Kategorien)
+   // ---------------------------
+// Timer abdocken / Mini-Fenster (finale stabile Version)
+// ---------------------------
+let miniWin = null;
+
+async function openMiniTimerWindow() {
+  // Wenn bereits offen, fokussieren
+  if (miniWin && !miniWin.closed) {
+    miniWin.focus();
+    return;
+  }
+
+  const features = "width=320,height=220,resizable=no,scrollbars=no";
+  miniWin = window.open("", "miniTimer", features);
+
+  if (!miniWin) {
+    alert("Popup blockiert. Bitte Popups erlauben.");
+    return;
+  }
+
+  // Theme übernehmen
+  const isDark = document.documentElement.classList.contains("dark");
+
+  // HTML + Styles schreiben
+  miniWin.document.open();
+  miniWin.document.write(`<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Timer</title>
+        <style>
+          :root {
+            --bg: #f3f4f6; --text: #0b1220; --panel: #ffffff;
+            --muted: #425066; --ok: #28a745; --err: #ff4d4f;
+          }
+          :root.dark {
+            --bg: #0b0b0c; --text: #e8e8e8; --panel: #0f1112;
+            --muted: #9aa0a6;
+          }
+          body {
+            font-family: system-ui, Segoe UI, Roboto, Arial;
+            background: var(--bg); color: var(--text);
+            margin: 0; padding: 14px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+          }
+          #time { font-size: 2rem; font-weight: bold; margin: 10px 0; }
+          select, button {
+            padding: 6px 10px; border-radius: 6px; font-size: 0.95rem;
+          }
+          select {
+            width: 100%; margin-bottom: 10px;
+            background: var(--panel); color: var(--text);
+            border: 1px solid rgba(0,0,0,0.15);
+          }
+          button {
+            cursor: pointer; border: none;
+            margin: 2px; color: #fff;
+          }
+          .start { background: var(--ok); }
+          .stop { background: var(--err); }
+          #status { font-size: 0.9rem; color: var(--muted); }
+        </style>
+      </head>
+      <body>
+        <select id="catSelect"></select>
+        <div id="status">Gestoppt</div>
+        <div id="time">--:--:--</div>
+        <div>
+          <button id="startBtn" class="start">Start</button>
+          <button id="stopBtn" class="stop">Stop</button>
+        </div>
+      </body>
+    </html>`);
+  miniWin.document.close();
+
+  // Theme übernehmen
+  miniWin.document.documentElement.classList.toggle("dark", isDark);
+
+  // Inhalt erst nach vollständigem Laden ansprechen
+  miniWin.addEventListener(
+    "load",
+    async () => {
+      try {
+        // 🔹 Datenbank sicher öffnen
+        if (!DB) DB = await openDB("zm_db", 1);
+
+        // 🔹 Benutzer & Rollen abfragen
+        const user = await idbGet(DB, "users", STATE.currentUser);
+        const isAdmin = user && user.role === "Administrator";
+
+        // 🔹 Kategorien laden und Dropdown füllen
+        const cats = await idbGetAll(DB, "categories");
+        const sel = miniWin.document.getElementById("catSelect");
+        cats
+          .filter((c) => {
+            if (isAdmin) return c.name === NON_DELETABLE_CATEGORY_NAME;
+            return (
+              c.owner === STATE.currentUser ||
+              c.name === NON_DELETABLE_CATEGORY_NAME
+            );
+          })
+          .forEach((c) => {
+            const opt = miniWin.document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+          });
+
+        // 🟢 Timer starten
+        miniWin.document.getElementById("startBtn").addEventListener("click", () => {
+          const chosen = sel.value;
+          if (!chosen) {
+            alert("Bitte eine Kategorie auswählen.");
+            return;
+          }
+          const active = JSON.parse(localStorage.getItem("zm_active") || "null");
+          if (active && active.username === STATE.currentUser) {
+            alert("Es läuft bereits ein Timer.");
+            return;
+          }
+          const entry = {
+            id: uid(),
+            username: STATE.currentUser,
+            start: Date.now(),
+            durationMin: null,
+            note: "",
+            categoryId: chosen,
+          };
+          localStorage.setItem("zm_active", JSON.stringify(entry));
+          showToast("Timer gestartet");
+        });
+
+        // 🔴 Timer stoppen mit Notiz
+        miniWin.document.getElementById("stopBtn").addEventListener("click", async () => {
+          if (!DB) DB = await openDB("zm_db", 1);
+          const raw = localStorage.getItem("zm_active");
+          if (!raw) {
+            alert("Kein laufender Timer.");
+            return;
+          }
+          const a = JSON.parse(raw);
+          if (a.username !== STATE.currentUser) {
+            alert("Dieser Timer gehört einem anderen Benutzer.");
+            return;
+          }
+          const durMin = Math.max(1, Math.round((Date.now() - a.start) / 60000));
+          const note = miniWin.prompt("Kurze Beschreibung (optional):") || "";
+          const catId = sel.value || a.categoryId;
+          const cat = await idbGet(DB, "categories", catId);
+          if (!cat) {
+            alert("Kategorie nicht gefunden.");
+            localStorage.removeItem("zm_active");
+            return;
+          }
+          cat.sessions = cat.sessions || [];
+          cat.sessions.push({
+            id: a.id,
+            username: a.username,
+            durationMin: durMin,
+            note,
+          });
+          await idbPut(DB, "categories", cat);
+          localStorage.removeItem("zm_active");
+          showToast("Zeit gestoppt ✓");
+          renderDashboard();
+        });
+
+        // 🔁 Live-Update der Anzeige im Popup
+        const statusEl = miniWin.document.getElementById("status");
+        const timeEl = miniWin.document.getElementById("time");
+        const ticker = setInterval(() => {
+          if (!miniWin || miniWin.closed) {
+            clearInterval(ticker);
+            miniWin = null;
+            return;
+          }
+          const raw = localStorage.getItem("zm_active");
+          let text = "--:--:--";
+          if (raw) {
+            try {
+              const a = JSON.parse(raw);
+              if (a.username === STATE.currentUser) {
+                text = msToHms(Date.now() - a.start);
+                statusEl.textContent = "Läuft";
+              } else {
+                statusEl.textContent = "Gestoppt";
+              }
+            } catch {
+              text = "--:--:--";
+              statusEl.textContent = "Fehler";
+            }
+          } else {
+            statusEl.textContent = "Gestoppt";
+          }
+          timeEl.textContent = text;
+        }, 500);
+      } catch (err) {
+        console.error("MiniTimer Fehler:", err);
+      }
+    },
+    { once: true }
+  );
+}
+
+    
+    // ---------------------------
+    // helpers (CSV/html already above)
+    // ---------------------------
+    
+    // Done.
+    </script>
+    
+</body>
+</html>
