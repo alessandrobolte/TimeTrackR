@@ -571,6 +571,21 @@ async function syncFromCloud() {
       renderStats();
       // greeting
       document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + (isAdmin? ' (Admin)':'') ;
+      // Adminpanel hinzufügen
+if (isAdmin) {
+  const catsPanel = document.querySelector('.cats-panel');
+  if (catsPanel) {
+    const panel = document.createElement('div');
+    panel.style.marginTop = '12px';
+    panel.innerHTML = `
+      <div style="font-size:0.9rem;color:var(--muted)">Admin-Funktionen:</div>
+      <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+    `;
+    catsPanel.appendChild(panel);
+    document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
+  }
+}
+
     }
     
     // ---------------------------
@@ -823,6 +838,66 @@ try {
       }
       downloadBlob(rows.join('\n'),'zeitmanagement_export.csv');
     }
+    // ---------------------------
+// Admin Cloud View (LemGOesHANA aus Cloudflare)
+// ---------------------------
+async function showAdminView() {
+  if (STATE.currentUser !== "admin") {
+    alert("Nur Admins dürfen diese Ansicht öffnen.");
+    return;
+  }
+
+  try {
+    const res = await fetch("https://timetrackr.alessandrobolte.workers.dev/api/getSessions?username=all");
+    if (!res.ok) throw new Error("Fehler beim Abrufen der Cloud-Daten");
+    const allSessions = await res.json();
+
+    if (!Array.isArray(allSessions) || allSessions.length === 0) {
+      alert("Keine LemGOesHANA-Sessions in der Cloud gefunden.");
+      return;
+    }
+
+    // Nur LemGOesHANA-Sessions
+    const filtered = allSessions.filter(s => s.category === "LemGOesHANA");
+
+    const rows = filtered.map(s => `
+      <tr>
+        <td>${escapeHtml(s.username || "—")}</td>
+        <td>${minutesToHuman(s.durationMin || 0)}</td>
+        <td>${escapeHtml(s.note || "")}</td>
+        <td>${new Date(s.timestamp).toLocaleString("de-DE")}</td>
+      </tr>
+    `).join("");
+
+    openModal(`
+      <h3>LemGOesHANA — Cloud Sessions (Admin-Ansicht)</h3>
+      <div style="max-height:420px;overflow:auto;margin-top:8px">
+        <table style="width:100%">
+          <thead>
+            <tr><th>Benutzer</th><th>Dauer</th><th>Notiz</th><th>Zeitpunkt</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px">
+        <button id="exportCloudBtn" class="accent small">Export (CSV)</button>
+      </div>
+    `);
+
+    // CSV-Export
+    document.getElementById("exportCloudBtn").addEventListener("click", () => {
+      const csv = ["username,durationMin,note,timestamp"];
+      filtered.forEach(s =>
+        csv.push(`${escapeCsv(s.username)},${s.durationMin||0},${escapeCsv(s.note||'')},${new Date(s.timestamp).toISOString()}`)
+      );
+      downloadBlob(csv.join("\n"), "lemgoeshana_cloud_export.csv");
+    });
+  } catch (err) {
+    console.error("❌ Fehler in showAdminView:", err);
+    alert("Fehler beim Abrufen der Cloud-Daten.");
+  }
+}
+
     function downloadBlob(text, name){ const blob = new Blob([text],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
     function escapeCsv(t){ if(t==null) return ''; const s=String(t); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"'; return s; }
     function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
