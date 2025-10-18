@@ -468,7 +468,6 @@ async function syncFromCloud() {
               <button id="exportBtn" class="small ghost">Export (CSV)</button>
               <button id="importBtn" class="small ghost">Import</button>
               <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
-              ${isAdmin ? '' : '<button id="resetBtn" class="small danger">Reset</button>'}
             </div>
             <div class="centered" style="margin-top:10px"><button id="forgotBtn" class="accent">Zeit stoppen vergessen?</button></div>
           </section>
@@ -784,13 +783,22 @@ try {
       const c = await idbGet(DB,'categories',id); if(!c) return;
     
       // Sichtbarkeit prüfen:
-      if(isAdmin){
-        // Admin darf nur LemGOesHANA einsehen
-        if(!c.system){ alert('Admin darf nur LemGOesHANA ansehen.'); return; }
-      } else {
-        // user: eigene Kategorien + LemGOesHANA
-        if(!(c.owner===STATE.currentUser || c.system)){ alert('Nicht berechtigt.'); return; }
-      }
+      if (isAdmin) {
+  // 🔸 Admin darf nur LemGOesHANA ansehen
+  if (!c.system || c.name !== NON_DELETABLE_CATEGORY_NAME) {
+    alert('Admin darf nur LemGOesHANA ansehen.');
+    return;
+  }
+} else {
+  // 🔹 User darf eigene Kategorien und eigene Sessions in LemGOesHANA sehen
+  const isOwn = c.owner === STATE.currentUser;
+  const isLemGO = c.system && c.name === NON_DELETABLE_CATEGORY_NAME;
+  if (!isOwn && !isLemGO) {
+    alert('Nicht berechtigt.');
+    return;
+  }
+}
+
     
       const sessions = await filterSessionsForViewer(c, c.sessions||[]);
       const allUsers = await idbGetAll(DB, 'users');
