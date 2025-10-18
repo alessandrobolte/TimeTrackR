@@ -1100,36 +1100,44 @@ function drawBarChart(){
   const ctx = document.getElementById('barChart');
   if(!ctx || !STATE.currentUser) return;
 
-  idbGetAll(DB,'categories').then(cats=>{
+  idbGetAll(DB,'categories').then(async cats=>{
+    const currentUser = await idbGet(DB, 'users', STATE.currentUser);
+    const isAdmin = currentUser && currentUser.role === 'Administrator';
     const data = [];
 
     for(const cat of cats){
-      if(cat.system && STATE.currentUser !== 'admin') continue; // normale User sehen keine Systemkategorien (außer LemGOesHANA)
-      if(!cat.sessions) continue;
+      if(!cat.sessions || cat.sessions.length === 0) continue;
 
-      const ownSessions = cat.sessions.filter(s =>
-        s.username === STATE.currentUser || STATE.currentUser === 'admin'
-      );
+      let sessions = [];
+      if(isAdmin) {
+        // Admin sieht nur LemGOesHANA
+        if (cat.system && cat.name === NON_DELETABLE_CATEGORY_NAME) {
+          sessions = cat.sessions;
+        }
+      } else {
+        // User sieht eigene Kategorien + LemGOesHANA
+        if (cat.owner === STATE.currentUser || cat.system) {
+          sessions = cat.sessions.filter(s => s.username === STATE.currentUser);
+        }
+      }
 
-      if(ownSessions.length === 0) continue;
+      if (sessions.length === 0) continue;
 
-      const totalMin = ownSessions.reduce((sum,s)=> sum + (s.durationMin||0), 0);
+      const totalMin = sessions.reduce((sum,s)=> sum + (s.durationMin||0), 0);
       data.push({ name: cat.name, totalMin });
     }
 
+    // Falls keine Daten vorhanden
+    const c = ctx.getContext('2d');
+    c.clearRect(0,0,ctx.width,ctx.height);
     if(data.length === 0){
-      const c = ctx.getContext('2d');
-      c.clearRect(0,0,ctx.width,ctx.height);
       c.font = '16px sans-serif';
       c.fillStyle = '#888';
       c.fillText('Keine Daten vorhanden', 20, 30);
       return;
     }
 
-    // Canvas vorbereiten
-    const c = ctx.getContext('2d');
-    c.clearRect(0,0,ctx.width,ctx.height);
-
+    // Zeichnung vorbereiten
     const margin = 40;
     const w = ctx.width - margin*2;
     const h = ctx.height - margin*2;
@@ -1137,7 +1145,7 @@ function drawBarChart(){
     const barWidth = w / data.length * 0.6;
     const step = w / data.length;
 
-    // Achsen zeichnen
+    // Achsen
     c.strokeStyle = '#ccc';
     c.lineWidth = 1;
     c.beginPath();
@@ -1146,7 +1154,7 @@ function drawBarChart(){
     c.lineTo(margin + w, margin + h);
     c.stroke();
 
-    // Balken zeichnen
+    // Balken
     c.fillStyle = '#2563eb';
     data.forEach((d,i)=>{
       const x = margin + i * step + step * 0.2;
@@ -1154,7 +1162,7 @@ function drawBarChart(){
       const barH = (d.totalMin / maxVal) * h;
       c.fillRect(x, y, barWidth, barH);
 
-      // Wert oberhalb anzeigen
+      // Wert anzeigen
       c.fillStyle = '#333';
       c.font = '11px sans-serif';
       c.textAlign = 'center';
@@ -1162,7 +1170,7 @@ function drawBarChart(){
       c.fillStyle = '#2563eb';
     });
 
-    // Kategorienbeschriftung
+    // Kategorien-Beschriftung
     c.fillStyle = '#444';
     c.font = '11px sans-serif';
     c.textAlign = 'center';
@@ -1172,13 +1180,14 @@ function drawBarChart(){
       c.fillText(d.name, x, y);
     });
 
-    // Titel / Einheit
+    // Titel
     c.fillStyle = '#444';
     c.font = '13px sans-serif';
     c.textAlign = 'left';
     c.fillText('Zeit pro Kategorie (Minuten)', margin, margin - 10);
   });
 }
+
 
     function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function getCssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#fff'; }
