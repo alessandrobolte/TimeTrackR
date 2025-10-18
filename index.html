@@ -572,6 +572,9 @@ async function syncFromCloud() {
       // greeting
       document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + (isAdmin? ' (Admin)':'') ;
       // Adminpanel hinzufügen
+// ---------------------------
+// Adminpanel mit Userverwaltung
+// ---------------------------
 if (isAdmin) {
   const catsPanel = document.querySelector('.cats-panel');
   if (catsPanel) {
@@ -580,11 +583,19 @@ if (isAdmin) {
     panel.innerHTML = `
       <div style="font-size:0.9rem;color:var(--muted)">Admin-Funktionen:</div>
       <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+      <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+      <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
+      <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+      <button id="addUserBtn" class="small ghost">➕ Neuen Benutzer anlegen</button>
     `;
     catsPanel.appendChild(panel);
+
     document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
+    document.getElementById('resetUserPwBtn').addEventListener('click', resetUserPassword);
+    document.getElementById('addUserBtn').addEventListener('click', addNewUser);
   }
 }
+
 
     }
     
