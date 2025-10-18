@@ -243,25 +243,7 @@ if (!hasLemGO) {
         }
       }
     
-      // Variant 2: clean categories on first boot after change
-      const resetFlag = localStorage.getItem('zm_categories_reset_v2') === '1';
-      if(!resetFlag){
-        await idbClear(DB,'categories');
-        const id = uid();
-        await idbPut(DB,'categories',{id, name:NON_DELETABLE_CATEGORY_NAME, owner:'system', system:true, sessions:[]});
-        localStorage.setItem('zm_categories_reset_v2','1');
-      } else {
-        // ensure LemGOesHANA exists and is marked system:true
-        const cats = await idbGetAll(DB,'categories');
-        const lem = (cats||[]).find(c=>c.name===NON_DELETABLE_CATEGORY_NAME);
-        if(!lem){
-          const id = uid();
-          await idbPut(DB,'categories',{id, name:NON_DELETABLE_CATEGORY_NAME, owner:'system', system:true, sessions:[]});
-        } else if(!lem.system){
-          lem.system = true; lem.owner = 'system';
-          await idbPut(DB,'categories',lem);
-        }
-      }
+
     
       // theme
       const theme = localStorage.getItem('zm_theme') || 'light';
