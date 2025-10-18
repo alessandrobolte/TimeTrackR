@@ -387,11 +387,59 @@ async function loadSessionsFromCloud(username) {
         return sessions.filter(s=> (s && s.username === STATE.currentUser));
       })();
     }
-    
+    // ---------------------------
+// Cloudflare → Lokaler Sync (beim Login oder Dashboard-Start)
+// ---------------------------
+async function syncFromCloud() {
+  if (!STATE.currentUser) return;
+  try {
+    const res = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getSessions?username=${STATE.currentUser}`);
+    if (!res.ok) throw new Error("Fehler beim Abruf der Cloud-Daten");
+    const sessions = await res.json();
+    if (!Array.isArray(sessions) || sessions.length === 0) return;
+
+    console.log(`☁️ ${sessions.length} Cloud-Sessions geladen`);
+
+    // Kategorien aus DB laden
+    const cats = await idbGetAll(DB, "categories");
+    const catMap = new Map(cats.map(c => [c.name, c]));
+
+    for (const s of sessions) {
+      const catName = s.category || "Allgemein";
+      let cat = catMap.get(catName);
+
+      // Falls Kategorie lokal nicht existiert → erstellen
+      if (!cat) {
+        cat = { id: uid(), name: catName, owner: STATE.currentUser, sessions: [] };
+        await idbPut(DB, "categories", cat);
+        catMap.set(catName, cat);
+      }
+
+      // Prüfen, ob Session schon lokal existiert
+      const exists = (cat.sessions || []).some(x => x.id === s.id);
+      if (!exists) {
+        cat.sessions = cat.sessions || [];
+        cat.sessions.push({
+          id: s.id,
+          username: STATE.currentUser,
+          durationMin: s.durationMin,
+          note: s.note || ""
+        });
+        await idbPut(DB, "categories", cat);
+      }
+    }
+
+    console.log("✅ Cloud-Sessions lokal synchronisiert");
+  } catch (err) {
+    console.warn("⚠️ Cloud-Sync fehlgeschlagen:", err);
+  }
+}
+
     // ---------------------------
     // Dashboard (User + Admin variations)
     // ---------------------------
     async function renderDashboard(){
+      await syncFromCloud();
       const user = await idbGet(DB,'users',STATE.currentUser);
       if(!user) return renderLogin();
       const isAdmin = user.role === 'Administrator';
