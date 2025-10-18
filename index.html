@@ -92,7 +92,7 @@
   <div class="app" id="app">
     <header>
       <div>
-        <h1 id="appTitle">TimeTrackR – Deine persönliche Zeiterfassung für Projekte und Kategorien</h1>
+        <h2 id="appTitle">TimeTrackR – Deine persönliche Zeiterfassung für Projekte und Kategorien</h2>
         <div id="loading" style="display:none;color:var(--muted);font-size:0.9rem">⏳ Einloggen ... Lade Daten</div>
       </div>
       <div class="top-controls">
@@ -576,7 +576,7 @@ async function syncFromCloud() {
       await renderCategoryList();
       renderStats();
       // greeting
-      document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + (isAdmin? ' (Admin)':'') ;
+      document.getElementById('greeting').textContent = 'Hallo ' + user.displayName ;
 // ---------------------------
 // Adminpanel mit Userverwaltung (Dropdown + Buttons)
 // ---------------------------
