@@ -1486,7 +1486,69 @@ async function openMiniTimerWindow() {
     // ---------------------------
     // helpers (CSV/html already above)
     // ---------------------------
-    
+    // ---------------------------
+// Admin-Tools: Passwort-Reset & neuen Benutzer hinzufügen
+// ---------------------------
+
+// Einzelnes Benutzerpasswort auf Initialwert zurücksetzen
+async function resetUserPassword() {
+  const allUsers = await idbGetAll(DB, 'users');
+  if (!allUsers || allUsers.length === 0) {
+    alert('Keine Benutzer gefunden.');
+    return;
+  }
+
+  const usernames = allUsers.map(u => u.username);
+  const name = prompt(
+    `Welches Benutzerkonto soll zurückgesetzt werden?\n\nVerfügbare Benutzer:\n${usernames.join(', ')}`
+  );
+  if (!name) return;
+
+  const user = allUsers.find(u => u.username === name.trim());
+  if (!user) {
+    alert('Benutzer nicht gefunden.');
+    return;
+  }
+
+  const confirmReset = confirm(
+    `Passwort von "${user.displayName}" (${user.username}) auf das Initialpasswort "Stadtwerke1" zurücksetzen?`
+  );
+  if (!confirmReset) return;
+
+  user.password = 'Stadtwerke1';
+  user.pwExpired = true;
+  await idbPut(DB, 'users', user);
+  showToast(`Passwort für ${user.displayName} wurde zurückgesetzt.`);
+}
+
+// Neuen Benutzer hinzufügen
+async function addNewUser() {
+  const username = prompt('Benutzername (Login-Name, klein geschrieben):');
+  if (!username) return;
+
+  const existing = await idbGet(DB, 'users', username);
+  if (existing) {
+    alert('Dieser Benutzername existiert bereits.');
+    return;
+  }
+
+  const displayName = prompt('Anzeigename (z. B. "Max Mustermann"):') || username;
+  const role = confirm('Soll der Benutzer Administratorrechte haben?')
+    ? 'Administrator'
+    : 'User';
+
+  const newUser = {
+    username,
+    password: 'Stadtwerke1',
+    displayName,
+    role,
+    pwExpired: true
+  };
+
+  await idbPut(DB, 'users', newUser);
+  showToast(`Neuer Benutzer "${displayName}" angelegt (Initialpasswort: Stadtwerke1).`);
+}
+
     // Done.
     </script>
     
