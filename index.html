@@ -381,21 +381,49 @@ if (!hasLemGO) {
     }
     
     // ---------------------------
-    // Visibility helpers
-    // ---------------------------
-    async function getVisibleCategories(){
-      const user = await idbGet(DB,'users',STATE.currentUser);
-      const cats = await idbGetAll(DB,'categories');
-      if(!user) return [];
-      const isAdmin = user.role === 'Administrator';
-      if(isAdmin){
-        // Admin sieht NUR LemGOesHANA (alle Sessions darin)
-        return cats.filter(c=> c.system === true && c.name === NON_DELETABLE_CATEGORY_NAME);
-      } else {
-        // User sieht eigene Kategorien + LemGOesHANA
-        return cats.filter(c=> (c.owner === STATE.currentUser) || (c.system === true && c.name === NON_DELETABLE_CATEGORY_NAME));
-      }
+// Sichtbare Kategorien mit automatischer LemGOesHANA-Wiederherstellung
+// ---------------------------
+async function getVisibleCategories() {
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  const cats = await idbGetAll(DB, 'categories');
+  if (!user) return [];
+
+  const isAdmin = user.role === 'Administrator';
+
+  // 🩺 Sicherstellen, dass LemGOesHANA immer vorhanden ist
+  let lem = cats.find(c => c.name === NON_DELETABLE_CATEGORY_NAME);
+  if (!lem) {
+    lem = {
+      id: uid(),
+      name: NON_DELETABLE_CATEGORY_NAME,
+      owner: 'system',
+      system: true,
+      sessions: []
+    };
+    await idbPut(DB, 'categories', lem);
+    cats.push(lem);
+    console.log("✅ LemGOesHANA automatisch hinzugefügt");
+  } else {
+    // 🔧 Repariere falls falsch markiert
+    if (!lem.system || lem.owner !== 'system') {
+      lem.system = true;
+      lem.owner = 'system';
+      await idbPut(DB, 'categories', lem);
+      console.log("🔧 LemGOesHANA repariert");
     }
+  }
+
+  // 🔹 Sichtbarkeitslogik
+  if (isAdmin) {
+    return cats.filter(c => c.system && c.name === NON_DELETABLE_CATEGORY_NAME);
+  } else {
+    return cats.filter(
+      c =>
+        c.owner === STATE.currentUser ||
+        (c.system && c.name === NON_DELETABLE_CATEGORY_NAME)
+    );
+  }
+}
     function filterSessionsForViewer(cat, sessions){
       if(!sessions) return [];
       // Admin: alle Sessions in LemGOesHANA
