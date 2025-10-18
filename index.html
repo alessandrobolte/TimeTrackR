@@ -54,7 +54,13 @@
 
   .time-big{font-size:2.2rem;font-weight:800}
   .timer-controls{display:flex;gap:8px;margin-top:8px}
-  select,input{padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--text)}
+  select,input{
+  padding:8px;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,0.15);
+  background:var(--panel);   /* ✅ Fix */
+  color:var(--text);
+}
   input[type="number"]{width:80px}
 
   .actions-row{display:flex;gap:8px;align-items:center;margin-top:12px}
