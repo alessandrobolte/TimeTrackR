@@ -620,6 +620,23 @@ async function loadSessionsFromCloud(username) {
       cat.sessions = cat.sessions || [];
       cat.sessions.push({ id: a.id, username: a.username, durationMin: durMin, note });
       await idbPut(DB,'categories',cat);
+      // ---- Cloudflare Worker Sync ----
+try {
+  await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveSession", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: STATE.currentUser,
+      id: a.id,
+      category: cat.name,
+      durationMin: durMin,
+      note: note || ''
+    })
+  });
+  console.log("✅ Session an Cloudflare gesendet");
+} catch (err) {
+  console.warn("⚠️ Konnte Session nicht an Worker senden:", err);
+}
       localStorage.removeItem('zm_active');
       showToast('Zeit gestoppt ✓'); renderDashboard();
     }
