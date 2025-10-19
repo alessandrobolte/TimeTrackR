@@ -126,7 +126,16 @@
         r.onerror = e => rej(e.target.error);
       });
     }
-    function idbGet(db, store, key){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const r=os.get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    async function idbGet(db, store, key) {
+  if (!db) db = await openDB('zm_db', 1); // 🔧 sicherstellen, dass DB offen ist
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const os = tx.objectStore(store);
+    const r = os.get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
     function idbPut(db, store, val){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
     function idbGetAll(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const r=os.getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
     function idbDelete(db, store, key){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
@@ -575,14 +584,7 @@ async function syncFromCloud() {
       document.getElementById('importFile').addEventListener('change', async e=>{
         const f=e.target.files[0]; if(!f) return; const txt=await f.text(); parseImportCSV(txt); e.target.value='';
       });
-      if(!isAdmin){
-        document.getElementById('resetBtn').addEventListener('click', async ()=>{
-          if(!confirm('Reset: Eigene Kategorien und Zeiten löschen?')) return;
-          const all = await idbGetAll(DB,'categories');
-          for(const c of all){ if(c.owner === STATE.currentUser && !c.system) await idbDelete(DB,'categories',c.id); }
-          showToast('Eigene Kategorien gelöscht'); renderDashboard();
-        });
-      }
+      
       document.getElementById('refreshBtn').addEventListener('click', ()=>{ renderDashboard(); showToast('Daten neu geladen ✅'); });
       document.getElementById('forgotBtn').addEventListener('click', openManualModal);
     
