@@ -200,71 +200,64 @@ async function loadSessionsFromCloud(username) {
     // ---------------------------
     // Initialization: DB and default data
     // ---------------------------
-    async function init(){
-      DB = await openDB('zm_db',1);
-      // 🩺 Absolute Sicherheitsprüfung: LemGOesHANA existiert immer
-try {
-  const allCats = await idbGetAll(DB, 'categories');
-  let lem = allCats.find(c => c.name === NON_DELETABLE_CATEGORY_NAME);
-  if (!lem) {
-    console.warn('⚠️ LemGOesHANA nicht gefunden – wird neu angelegt');
-    lem = {
-      id: uid(),
-      name: NON_DELETABLE_CATEGORY_NAME,
-      owner: 'system',
-      system: true,
-      sessions: []
-    };
-    await idbPut(DB, 'categories', lem);
-  } else {
-    // Repariere falls falsche Flags gesetzt
-    let changed = false;
-    if (!lem.system) { lem.system = true; changed = true; }
-    if (lem.owner !== 'system') { lem.owner = 'system'; changed = true; }
-    if (changed) {
+// ---------------------------
+// Initialization: DB and default data
+// ---------------------------
+async function init() {
+  DB = await openDB('zm_db', 1);
+
+  // 🩺 Sicherstellen, dass LemGOesHANA existiert (nur einmal prüfen)
+  try {
+    const cats = await idbGetAll(DB, 'categories');
+    let lem = cats.find(c => c.name.toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase());
+    if (!lem) {
+      lem = {
+        id: uid(),
+        name: NON_DELETABLE_CATEGORY_NAME,
+        owner: 'system',
+        system: true,
+        sessions: []
+      };
       await idbPut(DB, 'categories', lem);
-      console.log('🔧 LemGOesHANA repariert');
+      console.log('✅ LemGOesHANA wurde neu angelegt');
+    } else {
+      // Repariere evtl. falsche Flags
+      let changed = false;
+      if (!lem.system) { lem.system = true; changed = true; }
+      if (lem.owner !== 'system') { lem.owner = 'system'; changed = true; }
+      if (changed) {
+        await idbPut(DB, 'categories', lem);
+        console.log('🔧 LemGOesHANA repariert');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Fehler beim LemGOesHANA-Check:', err);
+  }
+
+  // ensure users exist
+  const existing = await idbGetAll(DB, 'users');
+  if (!existing || existing.length === 0) {
+    for (const u of USERS) {
+      await idbPut(DB, 'users', {
+        username: u[0],
+        password: u[1],
+        displayName: u[2],
+        role: u[3],
+        pwExpired: true
+      });
     }
   }
-} catch (err) {
-  console.error('❌ Fehler beim LemGOesHANA-Check:', err);
-}
-      // 🩺 Sicherheitsprüfung: LemGOesHANA sicherstellen
-const catsNow = await idbGetAll(DB, 'categories');
-const hasLemGO = catsNow.some(c => c.name === NON_DELETABLE_CATEGORY_NAME);
-if (!hasLemGO) {
-  const id = uid();
-  await idbPut(DB, 'categories', { 
-    id, 
-    name: NON_DELETABLE_CATEGORY_NAME, 
-    owner: 'system', 
-    system: true, 
-    sessions: [] 
-  });
-  console.log("✅ LemGOesHANA automatisch wiederhergestellt");
+
+  // theme
+  const theme = localStorage.getItem('zm_theme') || 'light';
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.getElementById('modeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
+
+  ensureToastStyles();
+  bindUI();
+  renderLogin();
 }
 
-      // ensure users exist
-      const existing = await idbGetAll(DB,'users');
-      if(!existing || existing.length === 0){
-        for(const u of USERS){
-          await idbPut(DB,'users',{username:u[0], password:u[1], displayName:u[2], role:u[3], pwExpired:true});
-        }
-      }
-    
-
-    
-      // theme
-      const theme = localStorage.getItem('zm_theme') || 'light';
-      document.documentElement.classList.toggle('dark', theme==='dark');
-      document.getElementById('modeToggle').textContent = theme==='light' ? '☀️' : '🌙';
-    
-      // compact toast (top-right)
-      ensureToastStyles();
-    
-      bindUI();
-      renderLogin();
-    }
     
     // ---------------------------
     // UI bindings and helpers
