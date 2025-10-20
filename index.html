@@ -797,13 +797,18 @@ async function syncAbsencesFromCloud() {
     if (statsPanel) {
       const absPanel = await renderAbsencePanel();
       statsPanel.appendChild(absPanel);
-      const toggle = absPanel.querySelector('#toggleAbsences');
-      toggle.addEventListener('click', () => {
-        const cont = absPanel.querySelector('#absencesContent');
-        const open = cont.style.display === 'block';
-        cont.style.display = open ? 'none' : 'block';
-        toggle.textContent = open ? 'Abwesenheiten ▾' : 'Abwesenheiten ▴';
-      });
+      if (absPanel) {
+  const toggle = absPanel.querySelector('#toggleAbsences');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      const cont = absPanel.querySelector('#absencesContent');
+      const open = cont.style.display === 'block';
+      cont.style.display = open ? 'none' : 'block';
+      toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    });
+  }
+}
+
     }
   }
 
