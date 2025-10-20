@@ -1113,7 +1113,7 @@ const lastOnline = sortedUsers
   ${users.map(u => `
     <div style="background:var(--panel);padding:8px 10px;border-radius:8px;box-shadow:var(--shadow);font-size:0.85rem">
       <div style="font-weight:600">${escapeHtml(u.displayName)}</div>
-      <div style="color:var(--muted)">${u.lastOnline ? new Date(u.lastOnline).toLocaleString('de-DE') : '-'}</div>
+      <div style="color:var(--muted)">${timeAgo(u.lastOnline)}</div>
     </div>
   `).join('')}
 </div>
