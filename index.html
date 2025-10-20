@@ -985,12 +985,21 @@ try {
 
         if (!confirm('Session wirklich löschen?')) return;
 
-        // 🔧 ID-basiertes Löschen
-        const cat = await idbGet(DB, 'categories', c.id);
-        if (!cat || !cat.sessions) return;
+       // 🔧 ID-basiertes Löschen (auch für system-Kategorien wie LemGOesHANA)
+let cat = await idbGet(DB, 'categories', c.id);
+if (!cat || !cat.sessions) return;
 
-        cat.sessions = cat.sessions.filter(s => s.id !== sVisible.id);
-        await idbPut(DB, 'categories', cat);
+// Falls system-Kategorie (z. B. LemGOesHANA), lokale Kopie aller Sessions laden
+if (cat.system) {
+  cat.sessions = (cat.sessions || []).filter(
+    s => !(s.id === sVisible.id && s.username === STATE.currentUser)
+  );
+} else {
+  cat.sessions = (cat.sessions || []).filter(s => s.id !== sVisible.id);
+}
+
+await idbPut(DB, 'categories', cat);
+
 
         // 🌩️ Cloudflare-Sync: Session aus KV löschen
         try {
