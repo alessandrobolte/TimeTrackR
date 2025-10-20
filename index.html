@@ -910,23 +910,24 @@ if (!dashSubtitle) {
   dashSubtitle.id = 'dashboardSubtitle';
   dashSubtitle.style.fontSize = '1.1rem';
   dashSubtitle.style.color = 'var(--muted)';
-  dashSubtitle.style.margin = '4px 0 12px 0';
-  dashSubtitle.style.textAlign = 'center';
+  dashSubtitle.style.margin = '4px 0 12px 4px'; // leicht eingerückt
   dashSubtitle.style.fontWeight = '500';
+  dashSubtitle.style.textAlign = 'left'; // bündig mit TimeTrackR
 
-  // 🔹 Füge es direkt NACH der Hauptüberschrift ein
+  // 🔹 direkt unter der Hauptüberschrift einfügen
   const h1 = document.querySelector('h1');
   if (h1 && h1.parentElement) {
     h1.insertAdjacentElement('afterend', dashSubtitle);
   } else {
-    // Fallback: oben ins mainContent
+    // Fallback, falls kein h1 gefunden wird
     const main = document.getElementById('mainContent');
     if (main) main.prepend(dashSubtitle);
   }
 }
 
-// 🔍 Text je nach Rolle setzen
+// 🔍 Text je nach Rolle
 dashSubtitle.textContent = isAdmin ? '🧑‍💼 Admin-Dashboard' : '👤 User-Dashboard';
+
 }
 
 
