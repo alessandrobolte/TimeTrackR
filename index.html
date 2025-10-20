@@ -979,21 +979,75 @@ async function renderAbsencePanel() {
 
 
 // ---------------------------
-// Monatskalender mit Hover + Klick auf Abwesenheiten (Admin)
+// Monatskalender mit Hover, Klick & Feiertags-/Sonntagsmarkierung (NRW)
 // ---------------------------
 function renderAbsenceCalendar(absences) {
-  const container = document.createElement('div');
-  container.className = 'absence-calendar';
+  const container = document.createElement("div");
+  container.className = "absence-calendar";
   container.dataset.year = new Date().getFullYear();
   container.dataset.month = new Date().getMonth();
+
+  // 🟡 Feiertage NRW berechnen
+  function getHolidaysNRW(year) {
+    const holidays = new Set();
+
+    // Hilfsfunktion: Datum zu ISO-String
+    const iso = (m, d) => new Date(year, m - 1, d).toISOString().slice(0, 10);
+
+    // Fixe Feiertage
+    [
+      iso(1, 1),   // Neujahr
+      iso(5, 1),   // Tag der Arbeit
+      iso(10, 3),  // Tag der Deutschen Einheit
+      iso(12, 25), // 1. Weihnachtstag
+      iso(12, 26), // 2. Weihnachtstag
+    ].forEach(d => holidays.add(d));
+
+    // Bewegliche Feiertage (abhängig von Ostern)
+    const easter = calcEaster(year);
+    const addDays = (date, days) => {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    };
+    holidays.add(addDays(easter, -2)); // Karfreitag
+    holidays.add(addDays(easter, 1));  // Ostermontag
+    holidays.add(addDays(easter, 39)); // Christi Himmelfahrt
+    holidays.add(addDays(easter, 50)); // Pfingstmontag
+    holidays.add(addDays(easter, 60)); // Fronleichnam (NRW)
+
+    return holidays;
+  }
+
+  // Gaußsche Osterformel
+  function calcEaster(y) {
+    const C = Math.floor(y / 100);
+    const N = y - 19 * Math.floor(y / 19);
+    const K = Math.floor((C - 17) / 25);
+    const I =
+      C -
+      Math.floor(C / 4) -
+      Math.floor((C - K) / 3) +
+      19 * N +
+      15;
+    const J = I - 30 * Math.floor(I / 30);
+    const L =
+      J -
+      Math.floor(J / 28) *
+        (1 - Math.floor(J / 28) * Math.floor(29 / (J + 1)) * Math.floor((21 - N) / 11));
+    const month = 3 + Math.floor((L + 2) / 31);
+    const day = (L + 2) % 31 + 1;
+    return new Date(y, month - 1, day);
+  }
 
   function drawCalendar(year, month) {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const today = new Date();
+    const holidays = getHolidaysNRW(year);
 
-    // Abwesenheiten-Mapping
+    // Abwesenheiten vorbereiten
     const map = {};
     absences.forEach(a => {
       const from = new Date(a.from);
@@ -1005,11 +1059,11 @@ function renderAbsenceCalendar(absences) {
       }
     });
 
-    const monthName = new Date(year, month, 1).toLocaleString('de-DE', {
-      month: 'long',
-      year: 'numeric'
+    const monthName = new Date(year, month, 1).toLocaleString("de-DE", {
+      month: "long",
+      year: "numeric"
     });
-    const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    const weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
     const startOffset = (firstDay.getDay() + 6) % 7;
 
     let html = `
@@ -1019,7 +1073,7 @@ function renderAbsenceCalendar(absences) {
         <button id="nextMonth" class="small ghost">→</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:0.8rem;text-align:center;color:var(--muted);margin-bottom:4px">
-        ${weekdays.map(w => `<div>${w}</div>`).join('')}
+        ${weekdays.map(w => `<div>${w}</div>`).join("")}
       </div>
       <div class="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
     `;
@@ -1031,28 +1085,42 @@ function renderAbsenceCalendar(absences) {
       const dateStr = date.toISOString().slice(0, 10);
       const entries = map[dateStr];
       const hasAbs = !!entries;
-      const bg = hasAbs ? 'rgba(255,99,71,0.15)' : 'var(--panel)';
-      const border = hasAbs
-        ? '1px solid rgba(255,99,71,0.4)'
-        : '1px solid rgba(0,0,0,0.05)';
+      const isSunday = date.getDay() === 0;
+      const isHoliday = holidays.has(dateStr);
+
+      // Farben / Hintergründe
+      let bg = "var(--panel)";
+      let border = "1px solid rgba(0,0,0,0.05)";
+      if (isSunday || isHoliday) {
+        bg = "rgba(255, 0, 0, 0.08)";
+        border = "1px solid rgba(255, 0, 0, 0.3)";
+      }
+      if (hasAbs) {
+        bg = "rgba(255,99,71,0.15)";
+        border = "1px solid rgba(255,99,71,0.4)";
+      }
+
       const tooltip = hasAbs
-        ? entries.map(e => `${e.name}${e.note ? ` (${e.note})` : ''}`).join(', ')
-        : '';
+        ? entries.map(e => `${e.name}${e.note ? ` (${e.note})` : ""}`).join(", ")
+        : isHoliday
+        ? "Feiertag (NRW)"
+        : "";
+
       const highlight =
         date.toDateString() === today.toDateString()
-          ? 'outline:1px solid var(--accent2);'
-          : '';
+          ? "outline:1px solid var(--accent2);"
+          : "";
 
       html += `
         <div class="calendar-day" 
              data-date="${dateStr}"
              title="${escapeHtml(tooltip)}"
-             style="background:${bg};border:${border};border-radius:8px;padding:6px;min-height:36px;position:relative;cursor:${hasAbs ? 'pointer' : 'default'};${highlight}">
+             style="background:${bg};border:${border};border-radius:8px;padding:6px;min-height:36px;position:relative;cursor:${hasAbs ? "pointer" : "default"};${highlight}">
           <div style="font-size:0.9rem">${d}</div>
           ${
             hasAbs
               ? `<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:6px;height:6px;background:tomato;border-radius:50%"></div>`
-              : ''
+              : ""
           }
         </div>`;
     }
@@ -1060,8 +1128,8 @@ function renderAbsenceCalendar(absences) {
     html += `</div>`;
     container.innerHTML = html;
 
-    // Navigation ankoppeln
-    container.querySelector('#prevMonth').onclick = () => {
+    // Navigation
+    container.querySelector("#prevMonth").onclick = () => {
       let y = parseInt(container.dataset.year);
       let m = parseInt(container.dataset.month) - 1;
       if (m < 0) { m = 11; y--; }
@@ -1070,7 +1138,7 @@ function renderAbsenceCalendar(absences) {
       drawCalendar(y, m);
     };
 
-    container.querySelector('#nextMonth').onclick = () => {
+    container.querySelector("#nextMonth").onclick = () => {
       let y = parseInt(container.dataset.year);
       let m = parseInt(container.dataset.month) + 1;
       if (m > 11) { m = 0; y++; }
@@ -1079,23 +1147,17 @@ function renderAbsenceCalendar(absences) {
       drawCalendar(y, m);
     };
 
-    // Klick auf Tag mit Abwesenheiten → Modal öffnen
-    container.querySelectorAll('.calendar-day[data-date]').forEach(el => {
-      el.addEventListener('click', () => {
+    // Klick auf Tag → Modal
+    container.querySelectorAll(".calendar-day[data-date]").forEach(el => {
+      el.addEventListener("click", () => {
         const dateStr = el.dataset.date;
         const list = map[dateStr];
         if (!list || list.length === 0) return;
-
         const details = list
           .map(a => `
-            <tr>
-              <td>${escapeHtml(a.name)}</td>
-              <td>${a.from}</td>
-              <td>${a.to}</td>
-              <td>${escapeHtml(a.note || '')}</td>
-            </tr>`)
-          .join('');
-
+            <tr><td>${escapeHtml(a.name)}</td><td>${a.from}</td><td>${a.to}</td><td>${escapeHtml(a.note || "")}</td></tr>
+          `)
+          .join("");
         openModal(`
           <h3>Abwesenheiten am ${dateStr}</h3>
           <table style="width:100%;margin-top:8px">
@@ -1107,13 +1169,10 @@ function renderAbsenceCalendar(absences) {
     });
   }
 
-  drawCalendar(
-    parseInt(container.dataset.year),
-    parseInt(container.dataset.month)
-  );
-
+  drawCalendar(parseInt(container.dataset.year), parseInt(container.dataset.month));
   return container;
 }
+
 
 
 
