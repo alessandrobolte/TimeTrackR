@@ -623,14 +623,16 @@ async function syncAbsencesFromCloud() {
   }
 }
 
-    // ---------------------------
-    // Dashboard (User + Admin variations)
-    // ---------------------------
-    async function renderDashboard() {
+// ---------------------------
+// Dashboard (User + Admin)
+// ---------------------------
+async function renderDashboard() {
   await syncFromCloud();
   await syncAbsencesFromCloud();
+
   const user = await idbGet(DB, 'users', STATE.currentUser);
   if (!user) return renderLogin();
+
   const isAdmin = user.role === 'Administrator';
   const catsVisible = await getVisibleCategories();
 
@@ -643,23 +645,28 @@ async function syncAbsencesFromCloud() {
             ${isAdmin ? '' : '<button id="addCategoryBtn" class="accent small">Kategorie hinzufügen</button>'}
             ${isAdmin ? '' : '<button id="delModeBtn" class="ghost small" aria-pressed="false">Löschen</button>'}
           </div>
-          <div style="text-align:right"><div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div></div>
+          <div style="text-align:right">
+            <div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div>
+          </div>
         </div>
+
         <div class="category-list" id="categoryList"></div>
+
         <div class="actions-row" style="margin-top:12px">
-  <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
-  ${isAdmin ? `
-    <button id="exportBtn" class="small ghost">Export (CSV)</button>
-    <button id="importBtn" class="small ghost">Import</button>
-    <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
-  ` : ''}
-</div>
+          <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
+          ${isAdmin ? `
+            <button id="exportBtn" class="small ghost">Export (CSV)</button>
+            <button id="importBtn" class="small ghost">Import</button>
+            <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
+          ` : ''}
+        </div>
 
         <div class="centered" style="margin-top:10px">
           <button id="forgotBtn" class="accent">Zeiten manuell nachtragen</button>
         </div>
-       <div class="centered" style="margin-top:6px"><button id="absenceBtn" class="accent small">Meine Abwesenheiten</button></div>
-
+        <div class="centered" style="margin-top:6px">
+          <button id="absenceBtn" class="accent small">Meine Abwesenheiten</button>
+        </div>
       </section>
 
       <aside class="timer-panel" aria-label="Timer Panel">
@@ -728,9 +735,13 @@ async function syncAbsencesFromCloud() {
     </section>
   `;
 
-  // User-spezifische Buttons
+  // -----------------------------
+  // USER-spezifische Aktionen
+  // -----------------------------
   if (!isAdmin) {
-    document.getElementById('addCategoryBtn').addEventListener('click', async () => {
+    const addBtn = document.getElementById('addCategoryBtn');
+    const delBtn = document.getElementById('delModeBtn');
+    if (addBtn) addBtn.addEventListener('click', async () => {
       const name = prompt('Name der Kategorie:');
       if (!name) return;
       if (name.trim().toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase()) {
@@ -746,35 +757,44 @@ async function syncAbsencesFromCloud() {
       await idbPut(DB, 'categories', { id, name, owner: STATE.currentUser, system: false, sessions: [] });
       renderDashboard();
     });
-
-    document.getElementById('delModeBtn').addEventListener('click', () => {
-      const btn = document.getElementById('delModeBtn');
-      const pressed = btn.getAttribute('aria-pressed') === 'true';
-      btn.setAttribute('aria-pressed', String(!pressed));
+    if (delBtn) delBtn.addEventListener('click', () => {
+      const pressed = delBtn.getAttribute('aria-pressed') === 'true';
+      delBtn.setAttribute('aria-pressed', String(!pressed));
       renderCategoryList();
     });
   }
 
-  // Allgemeine Buttons
-  document.getElementById('exportBtn').addEventListener('click', exportCSV);
-  document.getElementById('importBtn').addEventListener('click', () =>
-    document.getElementById('importFile').click()
-  );
-  document.getElementById('importFile').addEventListener('change', async e => {
-    const f = e.target.files[0];
-    if (!f) return;
-    const txt = await f.text();
-    parseImportCSV(txt);
-    e.target.value = '';
-  });
-  document.getElementById('refreshBtn').addEventListener('click', () => {
-    renderDashboard();
-    showToast('Daten neu geladen ✅');
-  });
+  // -----------------------------
+  // Gemeinsame Aktionen (nur wenn vorhanden)
+  // -----------------------------
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  if (exportBtn) exportBtn.addEventListener('click', exportCSV);
+  if (importBtn && importFile) {
+    importBtn.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const txt = await f.text();
+      parseImportCSV(txt);
+      e.target.value = '';
+    });
+  }
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      renderDashboard();
+      showToast('Daten neu geladen ✅');
+    });
+  }
+
+  // -----------------------------
+  // Timer + Manuell + Abwesenheit
+  // -----------------------------
   document.getElementById('forgotBtn').addEventListener('click', openManualModal);
   document.getElementById('absenceBtn').addEventListener('click', openAbsenceModal);
-
-  // Timer
   document.getElementById('startBtn').addEventListener('click', startTimer);
   document.getElementById('stopBtn').addEventListener('click', stopTimer);
   document.getElementById('undockBtn').addEventListener('click', openMiniTimerWindow);
@@ -789,120 +809,99 @@ async function syncAbsencesFromCloud() {
     drawLineChart();
   });
 
-  // Render Kategorien + Stats
+  // -----------------------------
+  // Kategorien + Stats rendern
+  // -----------------------------
   await renderCategoryList();
   renderStats();
 
-  // Admin: Abwesenheitsbereich einfügen
+  // -----------------------------
+  // Admin-spezifische Panels
+  // -----------------------------
   if (isAdmin) {
     const statsPanel = document.getElementById('statsPanel');
     if (statsPanel) {
       const absPanel = await renderAbsencePanel();
       statsPanel.appendChild(absPanel);
-      if (absPanel) {
-  const toggle = absPanel.querySelector('#toggleAbsences');
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      const cont = absPanel.querySelector('#absencesContent');
-      const open = cont.style.display === 'block';
-      cont.style.display = open ? 'none' : 'block';
-      toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-    });
-  }
-}
-
-
+      const toggle = absPanel?.querySelector('#toggleAbsences');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const cont = absPanel.querySelector('#absencesContent');
+          const open = cont.style.display === 'block';
+          cont.style.display = open ? 'none' : 'block';
+          toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+        });
+      }
     }
-  }
 
-  // Begrüßung
-  document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
-
-// ---------------------------
-// Adminpanel mit Userverwaltung (robuste Variante)
-// ---------------------------
-if (isAdmin) {
-  const catsPanel = document.querySelector('.cats-panel');
-  if (catsPanel) {
-    const panel = document.createElement('div');
-    panel.style.marginTop = '12px';
-    panel.innerHTML = `
-      <div id="adminHeader" style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        cursor:pointer;
-        background:#f2f2f2;
-        padding:6px 8px;
-        border-radius:8px;
-      ">
-        <div style="font-weight:600;color:#333">Admin-Funktionen</div>
-        <div id="adminToggle" style="color:#555">Ausklappen ▾</div>
-      </div>
-
-      <div id="adminContent" style="
-        display:none;
-        margin-top:6px;
-        padding:8px;
-        background:#f9f9f9;
-        border-radius:8px;
-      ">
-        <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
-        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
-        <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
-          <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
-          <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+    // Adminpanel für Benutzerverwaltung
+    const catsPanel = document.querySelector('.cats-panel');
+    if (catsPanel) {
+      const panel = document.createElement('div');
+      panel.style.marginTop = '12px';
+      panel.innerHTML = `
+        <div id="adminHeader" style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          cursor:pointer;
+          background:#f2f2f2;
+          padding:6px 8px;
+          border-radius:8px;
+        ">
+          <div style="font-weight:600;color:#333">Admin-Funktionen</div>
+          <div id="adminToggle" style="color:#555">Ausklappen ▾</div>
         </div>
-      </div>
-    `;
 
-    catsPanel.appendChild(panel);
+        <div id="adminContent" style="
+          display:none;
+          margin-top:6px;
+          padding:8px;
+          background:#f9f9f9;
+          border-radius:8px;
+        ">
+          <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+          <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+          <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+            <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+            <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+          </div>
+        </div>
+      `;
 
-    // 🧩 Alle Elemente innerhalb des Panels suchen
-    const adminHeader = panel.querySelector('#adminHeader');
-    const adminContent = panel.querySelector('#adminContent');
-    const adminToggle = panel.querySelector('#adminToggle');
-    const viewBtn = panel.querySelector('#adminViewBtn');
-    const resetBtn = panel.querySelector('#resetUserPwBtn');
-    const addBtn = panel.querySelector('#addUserBtn');
-    const userSelect = panel.querySelector('#userSelect');
+      catsPanel.appendChild(panel);
 
-    // 🧠 Nur wenn Element existiert → Eventlistener setzen
-    if (adminHeader && adminContent && adminToggle) {
-      adminHeader.addEventListener('click', () => {
-        const open = adminContent.style.display === 'block';
-        adminContent.style.display = open ? 'none' : 'block';
-        adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-      });
-    }
+      const adminHeader = panel.querySelector('#adminHeader');
+      const adminContent = panel.querySelector('#adminContent');
+      const adminToggle = panel.querySelector('#adminToggle');
+      const viewBtn = panel.querySelector('#adminViewBtn');
+      const resetBtn = panel.querySelector('#resetUserPwBtn');
+      const addBtn = panel.querySelector('#addUserBtn');
+      const userSelect = panel.querySelector('#userSelect');
 
-    if (viewBtn) {
-      viewBtn.addEventListener('click', showAdminView);
-    }
-
-    if (resetBtn) {
-      resetBtn.addEventListener('click', async () => {
+      if (adminHeader && adminContent && adminToggle) {
+        adminHeader.addEventListener('click', () => {
+          const open = adminContent.style.display === 'block';
+          adminContent.style.display = open ? 'none' : 'block';
+          adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+        });
+      }
+      if (viewBtn) viewBtn.addEventListener('click', showAdminView);
+      if (resetBtn) resetBtn.addEventListener('click', async () => {
         const name = userSelect?.value;
         if (name) await resetUserPassword(name);
       });
-    }
-
-    if (addBtn) {
-      addBtn.addEventListener('click', addNewUser);
-    }
-
-    // 🔁 Benutzerliste füllen, falls Funktion vorhanden
-    if (typeof populateUserDropdown === 'function') {
-      populateUserDropdown();
+      if (addBtn) addBtn.addEventListener('click', addNewUser);
+      if (typeof populateUserDropdown === 'function') populateUserDropdown();
     }
   }
+
+  // Begrüßung aktualisieren
+  document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
 }
 
-
-
-}
 
     
 // ---------------------------
