@@ -626,204 +626,221 @@ async function syncAbsencesFromCloud() {
     // ---------------------------
     // Dashboard (User + Admin variations)
     // ---------------------------
-    async function renderDashboard(){
-      await syncFromCloud();
-      await syncAbsencesFromCloud();
-      const user = await idbGet(DB,'users',STATE.currentUser);
-      if(!user) return renderLogin();
-      const isAdmin = user.role === 'Administrator';
-      const catsVisible = await getVisibleCategories();
-    
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
-        <div class="top">
-          <section class="cats-panel" aria-labelledby="catsTitle">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="display:flex;gap:8px;align-items:center">
-                ${isAdmin ? '' : '<button id="addCategoryBtn" class="accent small">Kategorie hinzufügen</button>'}
-                ${isAdmin ? '' : '<button id="delModeBtn" class="ghost small" aria-pressed="false">Löschen</button>'}
-              </div>
-              <div style="text-align:right"><div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div></div>
-            </div>
-            <div class="category-list" id="categoryList"></div>
-            <div class="actions-row" style="margin-top:12px">
-              <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
-              <button id="exportBtn" class="small ghost">Export (CSV)</button>
-              <button id="importBtn" class="small ghost">Import</button>
-              <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
-            </div>
-            <div class="centered" style="margin-top:10px"><button id="forgotBtn" class="accent">Zeit stoppen vergessen?</button></div>
-            <div class="centered" style="margin-top:6px"><button id="absenceBtn" class="small ghost">Meine Abwesenheiten</button></div>
+    async function renderDashboard() {
+  await syncFromCloud();
+  await syncAbsencesFromCloud();
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  if (!user) return renderLogin();
+  const isAdmin = user.role === 'Administrator';
+  const catsVisible = await getVisibleCategories();
 
-          </section>
-    
-          <aside class="timer-panel" aria-label="Timer Panel">
-            <div style="font-size:0.9rem;color:var(--muted)">Aktueller Timer</div>
-            <div class="time-big" id="activeTimerDisplay">--:--:--</div>
-            <div style="width:100%;display:flex;gap:8px;align-items:center">
-              <label for="activeCategorySelect" style="min-width:110px;color:var(--muted)">Kategorie</label>
-              <select id="activeCategorySelect" aria-label="Aktive Kategorie" style="flex:1"></select>
-            </div>
-            <div class="timer-controls" style="width:100%;justify-content:center">
-              <button id="startBtn" class="small">Start</button>
-              <button id="stopBtn" class="small">Stop</button>
-            </div>
-            <div style="font-size:0.9rem;color:var(--muted);text-align:center;margin-top:6px">Timer läuft auch nach Reload weiter</div>
-            <button id="undockBtn" class="small ghost" style="margin-top:6px">Timer abdocken</button>
-          </aside>
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="top">
+      <section class="cats-panel" aria-labelledby="catsTitle">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center">
+            ${isAdmin ? '' : '<button id="addCategoryBtn" class="accent small">Kategorie hinzufügen</button>'}
+            ${isAdmin ? '' : '<button id="delModeBtn" class="ghost small" aria-pressed="false">Löschen</button>'}
+          </div>
+          <div style="text-align:right"><div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div></div>
         </div>
-    
-        <section class="stats-panel" id="statsPanel">
-  <div class="stats-header" style="display:flex;align-items:center;justify-content:space-between">
-    <div id="statsTitle" style="font-weight:700">Statistiken</div>
-    <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
-  </div>
+        <div class="category-list" id="categoryList"></div>
+        <div class="actions-row" style="margin-top:12px">
+          <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
+          <button id="exportBtn" class="small ghost">Export (CSV)</button>
+          <button id="importBtn" class="small ghost">Import</button>
+          <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
+        </div>
+        <div class="centered" style="margin-top:10px">
+          <button id="forgotBtn" class="accent">Zeit stoppen vergessen?</button>
+        </div>
+        <div class="centered" style="margin-top:6px">
+          <button id="absenceBtn" class="small ghost">Meine Abwesenheiten</button>
+        </div>
+      </section>
 
-  <div id="statsContent" style="display:none;margin-top:10px">
-    <div id="rangeButtons" style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="small" data-range="7">Letzte 7 Tage</button>
-      <button class="small" data-range="14">Letzte 14 Tage</button>
-      <button class="small" data-range="30">30 Tage</button>
-      <button class="small" data-range="all">Gesamt</button>
+      <aside class="timer-panel" aria-label="Timer Panel">
+        <div style="font-size:0.9rem;color:var(--muted)">Aktueller Timer</div>
+        <div class="time-big" id="activeTimerDisplay">--:--:--</div>
+        <div style="width:100%;display:flex;gap:8px;align-items:center">
+          <label for="activeCategorySelect" style="min-width:110px;color:var(--muted)">Kategorie</label>
+          <select id="activeCategorySelect" aria-label="Aktive Kategorie" style="flex:1"></select>
+        </div>
+        <div class="timer-controls" style="width:100%;justify-content:center">
+          <button id="startBtn" class="small">Start</button>
+          <button id="stopBtn" class="small">Stop</button>
+        </div>
+        <div style="font-size:0.9rem;color:var(--muted);text-align:center;margin-top:6px">
+          Timer läuft auch nach Reload weiter
+        </div>
+        <button id="undockBtn" class="small ghost" style="margin-top:6px">Timer abdocken</button>
+      </aside>
     </div>
 
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-      <div style="flex:1;min-width:320px">
-        <table id="statsTable">
-          <thead>
-            <tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+    <section class="stats-panel" id="statsPanel">
+      <div class="stats-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div id="statsTitle" style="font-weight:700">Statistiken</div>
+        <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
       </div>
-      <div style="width:420px">
-        <canvas id="barChart" width="420" height="220" role="img"></canvas>
+
+      <div id="statsContent" style="display:none;margin-top:10px">
+        <div id="rangeButtons" style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="small" data-range="7">Letzte 7 Tage</button>
+          <button class="small" data-range="14">Letzte 14 Tage</button>
+          <button class="small" data-range="30">30 Tage</button>
+          <button class="small" data-range="all">Gesamt</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:320px">
+            <table id="statsTable">
+              <thead>
+                <tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="width:420px">
+            <canvas id="barChart" width="420" height="220" role="img"></canvas>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
+          <canvas id="lineChart" width="980" height="240" style="width:100%"></canvas>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
+          <div class="sessions-list">
+            <table id="sessionsTable">
+              <thead>
+                <tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
+  `;
 
-    <div style="margin-top:12px">
-      <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
-      <canvas id="lineChart" width="980" height="240" style="width:100%"></canvas>
-    </div>
-
-    <div style="margin-top:12px">
-      <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
-      <div class="sessions-list">
-        <table id="sessionsTable">
-          <thead>
-            <tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</section>
-
-      `;
-    
-      // wire up actions
-      if(!isAdmin){
-        document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
-          const name = prompt('Name der Kategorie:'); if(!name) return;
-          if(name.trim().toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase()){ alert('Diese Kategorie ist reserviert.'); return; }
-          const existing = await idbGetAll(DB,'categories');
-          if(existing.some(c=> c.owner===STATE.currentUser && c.name.toLowerCase()===name.toLowerCase())){ alert('Kategorie existiert bereits.'); return; }
-          const id = uid(); await idbPut(DB,'categories',{id,name,owner:STATE.currentUser,system:false,sessions:[]}); renderDashboard();
-        });
-    
-        document.getElementById('delModeBtn').addEventListener('click', ()=>{
-          const btn=document.getElementById('delModeBtn');
-          const pressed = btn.getAttribute('aria-pressed')==='true';
-          btn.setAttribute('aria-pressed', String(!pressed));
-          renderCategoryList(); // re-render with delete buttons
-        });
+  // User-spezifische Buttons
+  if (!isAdmin) {
+    document.getElementById('addCategoryBtn').addEventListener('click', async () => {
+      const name = prompt('Name der Kategorie:');
+      if (!name) return;
+      if (name.trim().toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase()) {
+        alert('Diese Kategorie ist reserviert.');
+        return;
       }
-    
-      document.getElementById('exportBtn').addEventListener('click', exportCSV);
-      document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
-      document.getElementById('importFile').addEventListener('change', async e=>{
-        const f=e.target.files[0]; if(!f) return; const txt=await f.text(); parseImportCSV(txt); e.target.value='';
-      });
-      
-      document.getElementById('refreshBtn').addEventListener('click', ()=>{ renderDashboard(); showToast('Daten neu geladen ✅'); });
-      document.getElementById('forgotBtn').addEventListener('click', openManualModal);
-      document.getElementById('absenceBtn').addEventListener('click', openAbsenceModal);
-
-    
-      // timer bindings
-      document.getElementById('startBtn').addEventListener('click', startTimer);
-      document.getElementById('stopBtn').addEventListener('click', stopTimer);
-      document.getElementById('undockBtn').addEventListener('click', openMiniTimerWindow);
-    
-      // stats toggle
-      document.getElementById('toggleStats').addEventListener('click', ()=>{
-        const cont = document.getElementById('statsContent');
-        const open = cont.style.display==='block';
-        cont.style.display = open? 'none':'block';
-        document.getElementById('toggleStats').textContent = open? 'Ausklappen ▾':'Einklappen ▴';
-        drawBarChart(); drawLineChart();
-      });
-    
-      // render lists and stats
-      await renderCategoryList();
-      renderStats();
-      if (isAdmin) {
-  const statsPanel = document.getElementById('statsPanel');
-  if (statsPanel) {
-    const absPanel = await renderAbsencePanel();
-statsPanel.appendChild(absPanel);
-
-const toggle = absPanel.querySelector('#toggleAbsences');
-toggle.addEventListener('click', () => {
-  const cont = absPanel.querySelector('#absencesContent');
-  const open = cont.style.display === 'block';
-  cont.style.display = open ? 'none' : 'block';
-  toggle.textContent = open ? 'Abwesenheiten ▾' : 'Abwesenheiten ▴';
-});
-
-  }
-}
-
-      // greeting
-      document.getElementById('greeting').textContent = 'Hallo ' + user.displayName ;
-// ---------------------------
-// Adminpanel mit Userverwaltung (Dropdown + Buttons)
-// ---------------------------
-if (isAdmin) {
-  const catsPanel = document.querySelector('.cats-panel');
-  if (catsPanel) {
-    const panel = document.createElement('div');
-    panel.style.marginTop = '12px';
-    panel.innerHTML = `
-      <div style="font-size:0.9rem;color:var(--muted)">Admin-Funktionen:</div>
-      <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
-      <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
-      <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
-        <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
-        <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
-      </div>
-    `;
-    catsPanel.appendChild(panel);
-
-    document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
-    document.getElementById('resetUserPwBtn').addEventListener('click', async () => {
-      const sel = document.getElementById('userSelect');
-      const name = sel.value;
-      if (name) await resetUserPassword(name);
+      const existing = await idbGetAll(DB, 'categories');
+      if (existing.some(c => c.owner === STATE.currentUser && c.name.toLowerCase() === name.toLowerCase())) {
+        alert('Kategorie existiert bereits.');
+        return;
+      }
+      const id = uid();
+      await idbPut(DB, 'categories', { id, name, owner: STATE.currentUser, system: false, sessions: [] });
+      renderDashboard();
     });
-    document.getElementById('addUserBtn').addEventListener('click', addNewUser);
 
-    // Nach dem Rendern: Benutzerliste füllen
-    populateUserDropdown();
+    document.getElementById('delModeBtn').addEventListener('click', () => {
+      const btn = document.getElementById('delModeBtn');
+      const pressed = btn.getAttribute('aria-pressed') === 'true';
+      btn.setAttribute('aria-pressed', String(!pressed));
+      renderCategoryList();
+    });
+  }
+
+  // Allgemeine Buttons
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('importBtn').addEventListener('click', () =>
+    document.getElementById('importFile').click()
+  );
+  document.getElementById('importFile').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const txt = await f.text();
+    parseImportCSV(txt);
+    e.target.value = '';
+  });
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    renderDashboard();
+    showToast('Daten neu geladen ✅');
+  });
+  document.getElementById('forgotBtn').addEventListener('click', openManualModal);
+  document.getElementById('absenceBtn').addEventListener('click', openAbsenceModal);
+
+  // Timer
+  document.getElementById('startBtn').addEventListener('click', startTimer);
+  document.getElementById('stopBtn').addEventListener('click', stopTimer);
+  document.getElementById('undockBtn').addEventListener('click', openMiniTimerWindow);
+
+  // Statistik-Toggle
+  document.getElementById('toggleStats').addEventListener('click', () => {
+    const cont = document.getElementById('statsContent');
+    const open = cont.style.display === 'block';
+    cont.style.display = open ? 'none' : 'block';
+    document.getElementById('toggleStats').textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    drawBarChart();
+    drawLineChart();
+  });
+
+  // Render Kategorien + Stats
+  await renderCategoryList();
+  renderStats();
+
+  // Admin: Abwesenheitsbereich einfügen
+  if (isAdmin) {
+    const statsPanel = document.getElementById('statsPanel');
+    if (statsPanel) {
+      const absPanel = await renderAbsencePanel();
+      statsPanel.appendChild(absPanel);
+      const toggle = absPanel.querySelector('#toggleAbsences');
+      toggle.addEventListener('click', () => {
+        const cont = absPanel.querySelector('#absencesContent');
+        const open = cont.style.display === 'block';
+        cont.style.display = open ? 'none' : 'block';
+        toggle.textContent = open ? 'Abwesenheiten ▾' : 'Abwesenheiten ▴';
+      });
+    }
+  }
+
+  // Begrüßung
+  document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
+
+  // Adminpanel Benutzerverwaltung
+  if (isAdmin) {
+    const catsPanel = document.querySelector('.cats-panel');
+    if (catsPanel) {
+      const panel = document.createElement('div');
+      panel.style.marginTop = '12px';
+      panel.innerHTML = `
+        <div style="font-size:0.9rem;color:var(--muted)">Admin-Funktionen:</div>
+        <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+        <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+          <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+          <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+        </div>
+      `;
+      catsPanel.appendChild(panel);
+
+      document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
+      document.getElementById('resetUserPwBtn').addEventListener('click', async () => {
+        const sel = document.getElementById('userSelect');
+        const name = sel.value;
+        if (name) await resetUserPassword(name);
+      });
+      document.getElementById('addUserBtn').addEventListener('click', addNewUser);
+      populateUserDropdown();
+    }
   }
 }
 
-
-
-    }
     
 // ---------------------------
 // Abwesenheiten – Verwaltung & Anzeige
