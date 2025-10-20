@@ -408,7 +408,7 @@ try {
 
       STATE.currentUser = local.username;
       localStorage.setItem('zm_lastUser', local.username);
-      document.getElementById('greeting').textContent = 'Hallo ' + local.displayName + ' 👋';
+   //   document.getElementById('greeting').textContent = 'Hallo ' + local.displayName + ' 👋';
       document.getElementById('logoutBtn').style.display = 'inline-block';
       setLoading(false);
       // 🕒 "Zuletzt online" speichern (Cloud-User)
@@ -428,7 +428,7 @@ await idbPut(DB, 'users', local);
 
     STATE.currentUser = user.username;
     localStorage.setItem('zm_lastUser', user.username);
-    document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
+   // document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
     document.getElementById('logoutBtn').style.display = 'inline-block';
     setLoading(false);
     // 🕒 "Zuletzt online" speichern (Lokaler User)
