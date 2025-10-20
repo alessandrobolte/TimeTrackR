@@ -812,18 +812,10 @@ renderStats();
 // -----------------------------
 const statsPanel = document.getElementById('statsPanel');
 if (statsPanel) {
-  const absPanel = await renderAbsencePanel();
+  const absPanel = await renderAbsencePanel(isAdmin ? null : STATE.currentUser);
   statsPanel.appendChild(absPanel);
 
-  const toggle = absPanel?.querySelector('#absencesToggle');
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      const cont = absPanel.querySelector('#absencesContent');
-      const open = cont.style.display === 'block';
-      cont.style.display = open ? 'none' : 'block';
-      toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-    });
-  }
+  
 }
 
   // -----------------------------
