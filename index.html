@@ -965,28 +965,22 @@ setTimeout(() => {
 
 
 // -----------------------------
-// 👋 Begrüßung oben rechts UNTER dem Ausloggen-Button
+// 👋 Begrüßung oben rechts unter dem Ausloggen-Button (saubere, feste Position)
 // -----------------------------
-let logoutBtn = document.querySelector('#logoutBtn') || document.querySelector('button[onclick*="logout"]');
-if (logoutBtn) {
-  // Den übergeordneten Container finden (Theme + Ausloggen liegen meist gemeinsam darin)
-  const parent = logoutBtn.parentElement;
-  
-  // Falls noch keine Begrüßung existiert
-  if (!document.getElementById('greetingTop')) {
-    const greet = document.createElement('div');
-    greet.id = 'greetingTop';
-    greet.style.fontSize = '0.8rem';
-    greet.style.color = 'var(--muted)';
-    greet.style.marginTop = '4px';
-    greet.style.textAlign = 'right';
-    greet.style.whiteSpace = 'nowrap';  // Kein Zeilenumbruch
-    greet.textContent = `👋 Hallo ${user.displayName}`;
-    
-    // Begrüßung direkt NACH dem Button-Container platzieren
-    parent.insertAdjacentElement('afterend', greet);
-  }
+if (!document.getElementById('greetingTop')) {
+  const greet = document.createElement('div');
+  greet.id = 'greetingTop';
+  greet.style.position = 'absolute';
+  greet.style.top = '50px'; // Abstand unterhalb des Ausloggen-/Theme-Blocks
+  greet.style.right = '12px';
+  greet.style.fontSize = '0.8rem';
+  greet.style.color = 'var(--muted)';
+  greet.style.whiteSpace = 'nowrap'; // Kein Zeilenumbruch
+  greet.style.zIndex = '10';
+  greet.textContent = `👋 Hallo ${user.displayName}`;
+  document.body.appendChild(greet);
 }
+
 
 
 }
