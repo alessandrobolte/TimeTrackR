@@ -964,27 +964,20 @@ setTimeout(() => {
 }, 4000);
 
 
-// 👋 Begrüßung direkt unter dem Theme-/Logout-Bereich (innerhalb der App!)
-const logoutBtn = document.getElementById('logoutBtn');
-if (logoutBtn) {
-  const topRight = logoutBtn.parentElement; // enthält Theme + Logout
+// 👋 Begrüßung unterhalb des Headers, rechtsbündig über dem Hauptinhalt
+const header = document.querySelector('header');
+if (header && !document.getElementById('greetingTop')) {
+  const greet = document.createElement('div');
+  greet.id = 'greetingTop';
+  greet.style.fontSize = '0.8rem';
+  greet.style.color = 'var(--muted)';
+  greet.style.margin = '6px 12px 0 0'; // oben/rechts etwas Abstand
+  greet.style.textAlign = 'right';
+  greet.style.whiteSpace = 'nowrap';
+  greet.textContent = `👋 Hallo ${user.displayName}`;
 
-  // Begrüßung nur einmal hinzufügen
-  if (!document.getElementById('greetingTop')) {
-    const greet = document.createElement('div');
-    greet.id = 'greetingTop';
-    greet.style.fontSize = '0.8rem';
-    greet.style.color = 'var(--muted)';
-    greet.style.marginTop = '6px';            // etwas mehr Abstand
-    greet.style.textAlign = 'right';
-    greet.style.whiteSpace = 'nowrap';
-    greet.textContent = `👋 Hallo ${user.displayName}`;
-
-    // 🔧 Änderung hier:
-    // Statt topRight.appendChild(greet)
-    // fügen wir es nach dem Logout-Button ein:
-    logoutBtn.insertAdjacentElement('afterend', greet);
-  }
+  // direkt NACH dem Header, aber VOR dem Hauptinhalt platzieren
+  header.insertAdjacentElement('afterend', greet);
 }
 
 
