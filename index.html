@@ -709,7 +709,11 @@ async function renderDashboard() {
   await syncAbsencesFromCloud();
 
   const greetingEl = document.getElementById('greeting');
-  if (greetingEl) greetingEl.style.display = ''; // Falls ausgeblendet durch Login
+  if (greetingEl) greetingEl.style.display = ''; // Falls ausgeblendet
+
+  // 🔹 Logout-Button wieder einblenden
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.style.display = 'inline-block';
 
   const user = await idbGet(DB, 'users', STATE.currentUser);
   if (!user) return renderLogin();
