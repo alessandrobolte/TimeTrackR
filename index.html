@@ -965,21 +965,28 @@ setTimeout(() => {
 
 
 // -----------------------------
-// 👋 Begrüßung oben rechts unter dem Ausloggen-Button (saubere, feste Position)
+// 👋 Begrüßung direkt unter dem Theme-/Logout-Bereich (innerhalb der App!)
 // -----------------------------
-if (!document.getElementById('greetingTop')) {
-  const greet = document.createElement('div');
-  greet.id = 'greetingTop';
-  greet.style.position = 'absolute';
-  greet.style.top = '50px'; // Abstand unterhalb des Ausloggen-/Theme-Blocks
-  greet.style.right = '12px';
-  greet.style.fontSize = '0.8rem';
-  greet.style.color = 'var(--muted)';
-  greet.style.whiteSpace = 'nowrap'; // Kein Zeilenumbruch
-  greet.style.zIndex = '10';
-  greet.textContent = `👋 Hallo ${user.displayName}`;
-  document.body.appendChild(greet);
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+  const topRight = logoutBtn.parentElement; // enthält Theme + Logout
+
+  // Begrüßung nur einmal hinzufügen
+  if (!document.getElementById('greetingTop')) {
+    const greet = document.createElement('div');
+    greet.id = 'greetingTop';
+    greet.style.fontSize = '0.8rem';
+    greet.style.color = 'var(--muted)';
+    greet.style.marginTop = '4px';
+    greet.style.textAlign = 'right';
+    greet.style.whiteSpace = 'nowrap';
+    greet.textContent = `👋 Hallo ${user.displayName}`;
+
+    // in denselben Container einfügen, aber unterhalb der Buttons
+    topRight.appendChild(greet);
+  }
 }
+
 
 
 
