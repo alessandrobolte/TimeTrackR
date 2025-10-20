@@ -110,6 +110,12 @@
   </div>
 
   <script>
+    async function sha256Hex(str) {
+  const enc = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest("SHA-256", enc);
+  const bytes = new Uint8Array(digest);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
     // ---------------------------
     // Simple IndexedDB wrapper (promisified)
     // ---------------------------
@@ -340,25 +346,78 @@ async function init() {
         </div>
       `;
     
-      document.getElementById('loginBtn').addEventListener('click', async ()=>{
-        const u = document.getElementById('loginUser').value.trim(); const p = document.getElementById('loginPw').value;
-        if(!u || !p){ alert('Bitte Benutzername und Passwort eingeben.'); return; }
-        setLoading(true,'⏳ Einloggen ... Lade Daten');
-        try{
-          const user = await idbGet(DB,'users',u);
-          if(!user){ setLoading(false); alert('Benutzer nicht gefunden.'); return; }
-          if(user.password !== p){ setLoading(false); alert('Falsches Passwort.'); return; }
-          // success
-          STATE.currentUser = user.username;
-          localStorage.setItem('zm_lastUser', user.username);
-          document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
-          document.getElementById('logoutBtn').style.display='inline-block';
-          setLoading(false);
-          // greeting modal
-          const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
-          setTimeout(()=>{ closeModal(); if(user.pwExpired){ renderChangePassword(true); } else { renderDashboard(); } },900);
-        }catch(e){ setLoading(false); alert('Fehler beim Einloggen'); }
-      });
+      document.getElementById('loginBtn').addEventListener('click', async () => {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPw').value;
+  if (!u || !p) { alert('Bitte Benutzername und Passwort eingeben.'); return; }
+  setLoading(true, '⏳ Einloggen ... Lade Daten');
+
+  try {
+    // 1) Cloud abfragen
+    let cloudUser = null;
+    try {
+      const r = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getUser?username=${encodeURIComponent(u)}`);
+      if (r.ok) {
+        const j = await r.json();
+        if (j.ok && j.user) cloudUser = j.user;
+      }
+    } catch { /* offline? Ignorieren -> fallback */ }
+
+    if (cloudUser) {
+      // 2) Passwort lokal hashen und gegen KV-Hash vergleichen
+      const givenHash = await sha256Hex(p);
+      if (givenHash !== cloudUser.passwordHash) {
+        setLoading(false);
+        alert('Falsches Passwort.');
+        return;
+      }
+
+      // 3) Lokalen User synchron halten (für Rolle/Name etc.)
+      let local = await idbGet(DB, 'users', u);
+      if (!local) {
+        local = {
+          username: cloudUser.username,
+          password: '***cloud***',     // nicht verwendet
+          displayName: cloudUser.displayName || cloudUser.username,
+          role: cloudUser.role || 'User',
+          pwExpired: !!cloudUser.pwExpired
+        };
+      } else {
+        local.displayName = cloudUser.displayName || local.displayName;
+        local.role = cloudUser.role || local.role;
+        local.pwExpired = !!cloudUser.pwExpired;
+      }
+      await idbPut(DB, 'users', local);
+
+      STATE.currentUser = local.username;
+      localStorage.setItem('zm_lastUser', local.username);
+      document.getElementById('greeting').textContent = 'Hallo ' + local.displayName + ' 👋';
+      document.getElementById('logoutBtn').style.display = 'inline-block';
+      setLoading(false);
+
+      const gm = openModal(`<h3>Hallo ${local.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+      setTimeout(() => { closeModal(); if (local.pwExpired) { renderChangePassword(true); } else { renderDashboard(); } }, 900);
+      return;
+    }
+
+    // 4) Fallback: Kein KV-User -> lokaler Demo-User
+    const user = await idbGet(DB, 'users', u);
+    if (!user) { setLoading(false); alert('Benutzer nicht gefunden.'); return; }
+    if (user.password !== p) { setLoading(false); alert('Falsches Passwort.'); return; }
+
+    STATE.currentUser = user.username;
+    localStorage.setItem('zm_lastUser', user.username);
+    document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
+    document.getElementById('logoutBtn').style.display = 'inline-block';
+    setLoading(false);
+    const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+    setTimeout(() => { closeModal(); if (user.pwExpired) { renderChangePassword(true); } else { renderDashboard(); } }, 900);
+
+  } catch (e) {
+    setLoading(false);
+    alert('Fehler beim Einloggen');
+  }
+});
     }
     
     // ---------------------------
@@ -381,14 +440,44 @@ async function init() {
           </div>
         </div>
       `;
-      document.getElementById('savePwBtn').addEventListener('click', async ()=>{
-        const a = document.getElementById('newPw').value; const b = document.getElementById('newPw2').value;
-        if(!a || a.length<6){ alert('Passwort zu kurz (mind. 6 Zeichen).'); return; }
-        if(a!==b){ alert('Passwörter stimmen nicht überein.'); return; }
-        const user = await idbGet(DB,'users',STATE.currentUser);
-        user.password = a; user.pwExpired = false; await idbPut(DB,'users',user);
-        showToast('Passwort geändert ✅'); renderDashboard();
-      });
+      document.getElementById('savePwBtn').addEventListener('click', async () => {
+  const a = document.getElementById('newPw').value;
+  const b = document.getElementById('newPw2').value;
+  if (!a || a.length < 6) { alert('Passwort zu kurz (mind. 6 Zeichen).'); return; }
+  if (a !== b) { alert('Passwörter stimmen nicht überein.'); return; }
+
+  const username = STATE.currentUser;
+  const user = await idbGet(DB,'users', username);
+  if (!user) { alert('Benutzer unbekannt.'); return; }
+
+  // 1) Lokal weiter pflegen (für Offline-Fall/Nur-Demo-User)
+  user.password = a;           // nur für lokale Accounts relevant
+  user.pwExpired = false;
+  await idbPut(DB,'users', user);
+
+  // 2) In die Cloud synchronisieren (gehashter Passwortwert)
+  try {
+    const passwordHash = await sha256Hex(a);
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveUser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        passwordHash,
+        displayName: user.displayName,
+        role: user.role,
+        pwExpired: false
+      })
+    });
+  } catch (err) {
+    console.warn("⚠️ Konnte gehashtes Passwort nicht an die Cloud senden:", err);
+    // kein Abbruch – lokal ist das Passwort korrekt geändert
+  }
+
+  showToast('Passwort geändert ✅');
+  renderDashboard();
+});
+
     }
     
 // ---------------------------
