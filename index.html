@@ -1097,14 +1097,28 @@ async function renderAbsencePanel(filterUser = null) {
 
   rows.sort((a, b) => a.from.localeCompare(b.from));
 
-  const tr = rows.map(r =>
-    `<tr>
-      ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
-      <td>${r.from}</td>
-      <td>${r.to}</td>
-      <td>${escapeHtml(r.note)}</td>
-    </tr>`
-  ).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+  // 📅 Hilfsfunktion für Datumsformat mit Wochentag
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr; // fallback falls ungültig
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short', // z. B. "Mi"
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+const tr = rows.map(r =>
+  `<tr>
+    ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
+    <td>${formatDate(r.from)}</td>
+    <td>${formatDate(r.to)}</td>
+    <td>${escapeHtml(r.note)}</td>
+  </tr>`
+).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+
 
   const calendarEl = renderAbsenceCalendar(rows);
 
