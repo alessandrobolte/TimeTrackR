@@ -867,23 +867,36 @@ const rows = sessions.map((s, idx) => `
             }
           });
         });
-        // Delete own sessions only
-        modal.querySelectorAll('button.small').forEach(b=>{
-          b.addEventListener('click', async ()=>{
-            const idx = parseInt(b.dataset.idx,10);
-            const visible = await filterSessionsForViewer(c, c.sessions||[]);
-            const sVisible = visible[idx];
-            if(!sVisible) return;
-            if(sVisible.username !== STATE.currentUser){ alert('Du kannst nur eigene Sessions löschen.'); return; }
-            if(!confirm('Session löschen?')) return;
-            const realIdx = (c.sessions||[]).findIndex(r => r.id===sVisible.id);
-            if(realIdx>=0){
-              c.sessions.splice(realIdx,1);
-              await idbPut(DB,'categories',c);
-              showToast('Session gelöscht'); closeModal(); renderDashboard();
-            }
-          });
-        });
+// Delete own sessions only
+modal.querySelectorAll('button.small').forEach(b => {
+  b.addEventListener('click', async () => {
+    const idx = parseInt(b.dataset.idx, 10);
+    const visible = await filterSessionsForViewer(c, c.sessions || []);
+    const sVisible = visible[idx];
+    if (!sVisible) return;
+
+    // Nur eigene Sessions
+    if (sVisible.username !== STATE.currentUser) {
+      alert('Du kannst nur eigene Sessions löschen.');
+      return;
+    }
+
+    if (!confirm('Session wirklich löschen?')) return;
+
+    // 🔧 Eindeutig über ID löschen (nicht über Index)
+    const cat = await idbGet(DB, 'categories', c.id);
+    if (!cat || !cat.sessions) return;
+
+    cat.sessions = cat.sessions.filter(s => s.id !== sVisible.id);
+    await idbPut(DB, 'categories', cat);
+
+    // 🔥 Cloud-Sync NICHT sofort triggern, um Wiederherstellung zu vermeiden
+    showToast('Session gelöscht');
+    closeModal();
+    renderDashboard();
+  });
+});
+
       }
     }
     
