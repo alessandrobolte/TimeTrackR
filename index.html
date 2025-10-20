@@ -964,15 +964,13 @@ setTimeout(() => {
 }, 4000);
 
 
-// 👋 Begrüßung unterhalb des Headers, rechtsbündig über dem Hauptinhalt (nur im Dashboard)
+// 👋 Begrüßung unterhalb des Headers, nur im Dashboard
 const header = document.querySelector('header');
-
-// Entferne alte Begrüßung, falls vorhanden (z. B. nach Login oder Seitenwechsel)
 const oldGreet = document.getElementById('greetingTop');
 if (oldGreet) oldGreet.remove();
 
-// Begrüßung nur einfügen, wenn wir im Dashboard sind
-if (header && document.getElementById('mainContent')) {
+// Zeige Begrüßung NUR, wenn Dashboard aktiv ist und ein Nutzer eingeloggt ist
+if (header && document.getElementById('mainContent') && STATE.currentUser) {
   const greet = document.createElement('div');
   greet.id = 'greetingTop';
   greet.style.fontSize = '0.8rem';
@@ -982,9 +980,10 @@ if (header && document.getElementById('mainContent')) {
   greet.style.whiteSpace = 'nowrap';
   greet.textContent = `👋 Hallo ${user.displayName}`;
 
-  // direkt NACH dem Header platzieren
+  // Einfügen direkt nach Header
   header.insertAdjacentElement('afterend', greet);
 }
+
 
 
 
@@ -1152,14 +1151,19 @@ function formatDate(dateStr) {
   });
 }
 
-const tr = rows.map(r =>
-  `<tr>
-    ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
-    <td>${formatDate(r.from)}</td>
-    <td>${formatDate(r.to)}</td>
-    <td>${escapeHtml(r.note)}</td>
-  </tr>`
-).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+const tr = rows.map(r => {
+  const fromFormatted = new Date(r.from).toLocaleDateString('de-DE');
+  const toFormatted = new Date(r.to).toLocaleDateString('de-DE');
+  return `
+    <tr>
+      ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
+      <td>${fromFormatted}</td>
+      <td>${toFormatted}</td>
+      <td>${escapeHtml(r.note)}</td>
+    </tr>
+  `;
+}).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+
 
 
   const calendarEl = renderAbsenceCalendar(rows);
