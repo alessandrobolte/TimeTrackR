@@ -708,10 +708,9 @@ async function syncFromCloud() {
       if (isAdmin) {
   const statsPanel = document.getElementById('statsPanel');
   if (statsPanel) {
-    const absHTML = await renderAbsencePanel();
-    const div = document.createElement('div');
-    div.innerHTML = absHTML;
-    statsPanel.appendChild(div);
+    const absPanel = await renderAbsencePanel();
+statsPanel.appendChild(absPanel);
+
 
     const toggle = div.querySelector('#toggleAbsences');
     toggle.addEventListener('click', () => {
@@ -861,27 +860,32 @@ async function renderAbsencePanel() {
     .join('');
 
  // Kalenderdaten vorbereiten
-const calendarHTML = renderAbsenceCalendar(rows);
+const calendarEl = renderAbsenceCalendar(rows);
 
-return `
-  <div style="margin-top:16px">
-    <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
-    <div id="absencesContent" style="display:none;margin-top:8px">
-      <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
-      <table style="width:100%;margin-bottom:14px">
-        <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
-        <tbody>${tr}</tbody>
-      </table>
-      <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
-      <table style="width:100%;margin-bottom:14px">
-        <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
-        <tbody>${lastOnline}</tbody>
-      </table>
-      <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
-      ${calendarHTML}
-    </div>
+const wrapper = document.createElement('div');
+wrapper.style.marginTop = '16px';
+wrapper.innerHTML = `
+  <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
+  <div id="absencesContent" style="display:none;margin-top:8px">
+    <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+    <table style="width:100%;margin-bottom:14px">
+      <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+      <tbody>${tr}</tbody>
+    </table>
+    <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
+    <table style="width:100%;margin-bottom:14px">
+      <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
+      <tbody>${lastOnline}</tbody>
+    </table>
+    <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
   </div>
 `;
+
+// Kalender-Element wirklich einfügen
+wrapper.querySelector('#absencesContent').appendChild(calendarEl);
+
+return wrapper;
+
 
 }
 // ---------------------------
@@ -989,7 +993,7 @@ function renderAbsenceCalendar(absences) {
     parseInt(container.dataset.month)
   );
 
-  return container.outerHTML;
+  return container;
 }
 
 
