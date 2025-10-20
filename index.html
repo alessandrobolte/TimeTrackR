@@ -2594,7 +2594,13 @@ async function autoSyncToCloud() {
       }
     }
 
-    console.log('🌐 Auto-Sync erfolgreich abgeschlossen');
+    const now = new Date();
+const timeString = now.toLocaleTimeString('de-DE', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+});
+console.log(`🌐 Auto-Sync erfolgreich (${timeString})`);
   } catch (err) {
     console.warn('⚠️ Auto-Sync Fehler:', err);
   }
