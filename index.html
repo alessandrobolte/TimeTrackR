@@ -647,11 +647,14 @@ async function syncAbsencesFromCloud() {
         </div>
         <div class="category-list" id="categoryList"></div>
         <div class="actions-row" style="margin-top:12px">
-          <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
-          <button id="exportBtn" class="small ghost">Export (CSV)</button>
-          <button id="importBtn" class="small ghost">Import</button>
-          <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
-        </div>
+  <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
+  ${isAdmin ? `
+    <button id="exportBtn" class="small ghost">Export (CSV)</button>
+    <button id="importBtn" class="small ghost">Import</button>
+    <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
+  ` : ''}
+</div>
+
         <div class="centered" style="margin-top:10px">
           <button id="forgotBtn" class="accent">Zeiten manuell nachtragen</button>
         </div>
