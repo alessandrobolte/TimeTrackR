@@ -1005,17 +1005,16 @@ async function openAbsenceModal() {
   user.absences = user.absences || [];
 
   // 📅 Hilfsfunktion für Datumsformat mit Wochentag
-function formatDate(dateStr) {
+  function formatDate(dateStr) {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
   return d.toLocaleDateString('de-DE', {
-    weekday: 'short',
+    weekday: 'short',  // ← hier stand vorher der abgekürzte Wochentag
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
   });
-}
 
 const list = user.absences
   .map((a, i) => `<tr>
@@ -1151,18 +1150,15 @@ function formatDate(dateStr) {
   });
 }
 
-const tr = rows.map(r => {
-  const fromFormatted = new Date(r.from).toLocaleDateString('de-DE');
-  const toFormatted = new Date(r.to).toLocaleDateString('de-DE');
-  return `
-    <tr>
-      ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
-      <td>${fromFormatted}</td>
-      <td>${toFormatted}</td>
-      <td>${escapeHtml(r.note)}</td>
-    </tr>
-  `;
-}).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+const tr = rows.map(r =>
+  `<tr>
+    ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
+    <td>${formatDateDE(r.from)}</td>
+    <td>${formatDateDE(r.to)}</td>
+    <td>${escapeHtml(r.note)}</td>
+  </tr>`
+).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+
 
 
 
@@ -1202,7 +1198,7 @@ const tr = rows.map(r => {
 
   wrapper.querySelector('#absencesContent').appendChild(calendarEl);
   return wrapper;
-}
+}}
 
 
 
@@ -1376,19 +1372,26 @@ function renderAbsenceCalendar(absences) {
       drawCalendar(y, m);
     };
 
-    // Klick auf Tag → Modal
-    container.querySelectorAll(".calendar-day[data-date]").forEach(el => {
+        // Klick auf Tag → Modal
+        container.querySelectorAll(".calendar-day[data-date]").forEach(el => {
       el.addEventListener("click", () => {
         const dateStr = el.dataset.date;
         const list = map[dateStr];
         if (!list || list.length === 0) return;
+
         const details = list
           .map(a => `
-            <tr><td>${escapeHtml(a.name)}</td><td>${a.from}</td><td>${a.to}</td><td>${escapeHtml(a.note || "")}</td></tr>
+            <tr>
+              <td>${escapeHtml(a.name)}</td>
+              <td>${formatDateDE(a.from)}</td>
+              <td>${formatDateDE(a.to)}</td>
+              <td>${escapeHtml(a.note || "")}</td>
+            </tr>
           `)
           .join("");
+
         openModal(`
-          <h3>Abwesenheiten am ${dateStr}</h3>
+          <h3>Abwesenheiten am ${formatDateDE(dateStr)}</h3>
           <table style="width:100%;margin-top:8px">
             <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
             <tbody>${details}</tbody>
@@ -1396,8 +1399,9 @@ function renderAbsenceCalendar(absences) {
         `);
       });
     });
-  }
+  } // <-- Diese Klammer schließt drawCalendar korrekt!
 
+  // Erstellt initial den aktuellen Monat
   drawCalendar(parseInt(container.dataset.year), parseInt(container.dataset.month));
   return container;
 }
@@ -2667,6 +2671,17 @@ setInterval(() => {
     console.log('📴 Offline – Auto-Sync übersprungen');
   }
 }, 30 * 1000);
+function formatDateDE(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short', // Mi, Do, Fr
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
 
     </script>
     
