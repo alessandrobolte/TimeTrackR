@@ -965,23 +965,29 @@ setTimeout(() => {
 
 
 // -----------------------------
-// 👋 Begrüßung oben rechts unter dem Ausloggen-Button
+// 👋 Begrüßung oben rechts UNTER dem Ausloggen-Button
 // -----------------------------
-const greetingContainer = document.getElementById('greetingTop');
-if (!greetingContainer) {
-  const logoutBtn = document.querySelector('#logoutBtn') || document.querySelector('button[onclick*="logout"]');
-  if (logoutBtn && logoutBtn.parentElement) {
+let logoutBtn = document.querySelector('#logoutBtn') || document.querySelector('button[onclick*="logout"]');
+if (logoutBtn) {
+  // Den übergeordneten Container finden (Theme + Ausloggen liegen meist gemeinsam darin)
+  const parent = logoutBtn.parentElement;
+  
+  // Falls noch keine Begrüßung existiert
+  if (!document.getElementById('greetingTop')) {
     const greet = document.createElement('div');
     greet.id = 'greetingTop';
-    greet.style.fontSize = '0.85rem';
+    greet.style.fontSize = '0.8rem';
     greet.style.color = 'var(--muted)';
-    greet.style.marginTop = '2px';
+    greet.style.marginTop = '4px';
     greet.style.textAlign = 'right';
-    greet.style.whiteSpace = 'nowrap'; // ⬅️ Kein Zeilenumbruch
+    greet.style.whiteSpace = 'nowrap';  // Kein Zeilenumbruch
     greet.textContent = `👋 Hallo ${user.displayName}`;
-    logoutBtn.parentElement.appendChild(greet);
+    
+    // Begrüßung direkt NACH dem Button-Container platzieren
+    parent.insertAdjacentElement('afterend', greet);
   }
 }
+
 
 }
 
