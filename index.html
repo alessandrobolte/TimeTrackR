@@ -964,19 +964,25 @@ setTimeout(() => {
 }, 4000);
 
 
-// 👋 Begrüßung unterhalb des Headers, rechtsbündig über dem Hauptinhalt
+// 👋 Begrüßung unterhalb des Headers, rechtsbündig über dem Hauptinhalt (nur im Dashboard)
 const header = document.querySelector('header');
-if (header && !document.getElementById('greetingTop')) {
+
+// Entferne alte Begrüßung, falls vorhanden (z. B. nach Login oder Seitenwechsel)
+const oldGreet = document.getElementById('greetingTop');
+if (oldGreet) oldGreet.remove();
+
+// Begrüßung nur einfügen, wenn wir im Dashboard sind
+if (header && document.getElementById('mainContent')) {
   const greet = document.createElement('div');
   greet.id = 'greetingTop';
   greet.style.fontSize = '0.8rem';
   greet.style.color = 'var(--muted)';
-  greet.style.margin = '6px 12px 0 0'; // oben/rechts etwas Abstand
+  greet.style.margin = '6px 12px 0 0';
   greet.style.textAlign = 'right';
   greet.style.whiteSpace = 'nowrap';
   greet.textContent = `👋 Hallo ${user.displayName}`;
 
-  // direkt NACH dem Header, aber VOR dem Hauptinhalt platzieren
+  // direkt NACH dem Header platzieren
   header.insertAdjacentElement('afterend', greet);
 }
 
