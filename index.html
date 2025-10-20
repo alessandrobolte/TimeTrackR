@@ -1073,12 +1073,17 @@ async function renderAbsencePanel() {
   ).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
 
   // Zuletzt online
-  const lastOnline = users
-    .map(u => `<tr>
-      <td>${escapeHtml(u.displayName)}</td>
-      <td>${u.lastOnline ? new Date(u.lastOnline).toLocaleString('de-DE') : '-'}</td>
-    </tr>`)
-    .join('');
+ // 🕒 Sortierung nach letzter Aktivität (neueste zuerst)
+const sortedUsers = [...users].sort((a, b) => (b.lastOnline || 0) - (a.lastOnline || 0));
+
+// 🕒 Darstellung "vor X Tagen"
+const lastOnline = sortedUsers
+  .map(u => `<tr>
+    <td>${escapeHtml(u.displayName)}</td>
+    <td>${timeAgo(u.lastOnline)}</td>
+  </tr>`)
+  .join('');
+
 
   const calendarEl = renderAbsenceCalendar(rows);
 
@@ -1764,7 +1769,21 @@ for (const u of allUsers) userMap[u.username] = u.displayName;
     function downloadBlob(text, name){ const blob = new Blob([text],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
     function escapeCsv(t){ if(t==null) return ''; const s=String(t); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"'; return s; }
     function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    
+    // 🔧 Wandelt Timestamp in "vor X Tagen/Stunden" um
+function timeAgo(timestamp) {
+  if (!timestamp) return '-';
+  const diffMs = Date.now() - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffDay > 0) return `vor ${diffDay} Tag${diffDay > 1 ? 'en' : ''}`;
+  if (diffHr > 0) return `vor ${diffHr} Stunde${diffHr > 1 ? 'n' : ''}`;
+  if (diffMin > 1) return `vor ${diffMin} Minuten`;
+  return 'gerade eben';
+}
+
     async function parseImportCSV(txt){
       const lines = txt.split(/\r?\n/).filter(Boolean); if(lines.length<=1){ alert('Keine Daten in CSV gefunden'); return; } lines.shift();
       const user = await idbGet(DB,'users',STATE.currentUser);
