@@ -805,26 +805,26 @@ async function renderDashboard() {
 
   // Kategorien + Stats
   await renderCategoryList();
-  renderStats();
+renderStats();
 
-  // -----------------------------
-  // Abwesenheiten-Panel (für Admins UND User)
-  // -----------------------------
-  const statsPanel = document.getElementById('statsPanel');
-  if (statsPanel) {
-    const absPanel = await renderAbsencePanel();
-    statsPanel.appendChild(absPanel);
+// -----------------------------
+// Abwesenheiten-Panel (für Admins UND User)
+// -----------------------------
+const statsPanel = document.getElementById('statsPanel');
+if (statsPanel) {
+  const absPanel = await renderAbsencePanel();
+  statsPanel.appendChild(absPanel);
 
-    const toggle = absPanel?.querySelector('#absencesToggle');
-    if (toggle) {
-      toggle.addEventListener('click', () => {
-        const cont = absPanel.querySelector('#absencesContent');
-        const open = cont.style.display === 'block';
-        cont.style.display = open ? 'none' : 'block';
-        toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-      });
-    }
+  const toggle = absPanel?.querySelector('#absencesToggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      const cont = absPanel.querySelector('#absencesContent');
+      const open = cont.style.display === 'block';
+      cont.style.display = open ? 'none' : 'block';
+      toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    });
   }
+}
 
   // -----------------------------
   // Admin-spezifische Panels
