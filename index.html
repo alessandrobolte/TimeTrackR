@@ -324,133 +324,204 @@ async function init() {
         document.getElementById('modeToggle').textContent = isDark? '🌙':'☀️';
       });
       document.getElementById('logoutBtn').addEventListener('click', async ()=>{
-        STATE.currentUser = null;
-        document.getElementById('greeting').textContent='';
-        renderLogin();
-      });
+  STATE.currentUser = null;
+
+  // Begrüßungsbereiche leeren/ausblenden
+  const g = document.getElementById('greeting');
+  if (g) { g.innerHTML = ''; g.style.display = 'none'; }
+
+  // Zusätzliche Begrüßung direkt unter dem Header entfernen
+  document.getElementById('greetingTop')?.remove();
+
+  // Dashboard-Subtitel entfernen (falls vorhanden)
+  document.getElementById('dashboardSubtitle')?.remove();
+
+  // Wochen-Toast entfernen (falls noch sichtbar)
+  document.getElementById('weeklyToast')?.remove();
+
+  // Logout-Button ausblenden
+  document.getElementById('logoutBtn').style.display = 'none';
+
+  // Login rendern
+  renderLogin();
+});
     }
     
     // ---------------------------
     // Login Flow (client-side login for demo)
     // ---------------------------
-    async function renderLogin(){
-      // 👋 Begrüßung im Login ausblenden oder leeren
-      const greetingEl = document.getElementById('greeting');
-if (greetingEl) {
-  greetingEl.innerHTML = '';
-  greetingEl.style.display = 'none';
-}
+    async function renderLogin() {
+  // 👋 Begrüßung im Login vollständig ausblenden oder löschen
+  const greetingEl = document.getElementById('greeting');
+  if (greetingEl) {
+    greetingEl.innerHTML = '';
+    greetingEl.style.display = 'none';
+  }
 
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
-          <div style="width:380px;padding:18px;border-radius:12px;background:var(--panel);box-shadow:var(--shadow)">
-            <h2 style="margin-top:0">Login 🔐</h2>
-            <div style="margin-bottom:8px;color:var(--muted)">Bitte melde dich mit deinem Benutzernamen an.</div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <input id="loginUser" placeholder="Benutzername" autofocus />
-              <input id="loginPw" placeholder="Passwort" type="password" />
-              <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button id="loginBtn" class="accent">Einloggen</button>
-              </div>
-            </div>
-            <div style="margin-top:10px;font-size:0.9rem;color:var(--muted)"></div>
+  // 🧹 Optional: auch Dashboard-Überreste (Admin/User-Panels) leeren
+  const main = document.getElementById('mainContent');
+  if (main) main.innerHTML = '';
+
+  // 🧹 Logout-Button verstecken (wichtig beim Rücksprung)
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.style.display = 'none';
+
+  // 🧹 Dashboard-Subtitle ebenfalls leeren
+  const dashSubtitle = document.getElementById('dashboardSubtitle');
+  if (dashSubtitle) dashSubtitle.remove();
+
+  main.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
+      <div style="width:380px;padding:18px;border-radius:12px;background:var(--panel);box-shadow:var(--shadow)">
+        <h2 style="margin-top:0">Login 🔐</h2>
+        <div style="margin-bottom:8px;color:var(--muted)">Bitte melde dich mit deinem Benutzernamen an.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input id="loginUser" placeholder="Benutzername" autofocus />
+          <input id="loginPw" placeholder="Passwort" type="password" />
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="loginBtn" class="accent">Einloggen</button>
           </div>
         </div>
-      `;
-    
-      document.getElementById('loginBtn').addEventListener('click', async () => {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPw').value;
-  if (!u || !p) { alert('Bitte Benutzername und Passwort eingeben.'); return; }
-  setLoading(true, '⏳ Einloggen ... Lade Daten');
+        <div style="margin-top:10px;font-size:0.9rem;color:var(--muted)"></div>
+      </div>
+    </div>
+  `;
 
-  try {
-    // 1) Cloud abfragen
-    let cloudUser = null;
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPw').value;
+    if (!u || !p) {
+      alert('Bitte Benutzername und Passwort eingeben.');
+      return;
+    }
+    setLoading(true, '⏳ Einloggen ... Lade Daten');
+
     try {
-      const r = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getUser?username=${encodeURIComponent(u)}`);
-      if (r.ok) {
-        const j = await r.json();
-        if (j.ok && j.user) cloudUser = j.user;
+      // 1️⃣ Cloud abfragen
+      let cloudUser = null;
+      try {
+        const r = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getUser?username=${encodeURIComponent(u)}`);
+        if (r.ok) {
+          const j = await r.json();
+          if (j.ok && j.user) cloudUser = j.user;
+        }
+      } catch {
+        /* offline → fallback */
       }
-    } catch { /* offline? Ignorieren -> fallback */ }
 
-    if (cloudUser) {
-      // 2) Passwort lokal hashen und gegen KV-Hash vergleichen
-      const givenHash = await sha256Hex(p);
-      if (givenHash !== cloudUser.passwordHash) {
+      if (cloudUser) {
+        // 2️⃣ Passwort prüfen
+        const givenHash = await sha256Hex(p);
+        if (givenHash !== cloudUser.passwordHash) {
+          setLoading(false);
+          alert('Falsches Passwort.');
+          return;
+        }
+
+        // 3️⃣ Lokalen User synchronisieren
+        let local = await idbGet(DB, 'users', u);
+        if (!local) {
+          local = {
+            username: cloudUser.username,
+            password: '***cloud***',
+            displayName: cloudUser.displayName || cloudUser.username,
+            role: cloudUser.role || 'User',
+            pwExpired: !!cloudUser.pwExpired
+          };
+        } else {
+          local.displayName = cloudUser.displayName || local.displayName;
+          local.role = cloudUser.role || local.role;
+          local.pwExpired = !!cloudUser.pwExpired;
+        }
+        await idbPut(DB, 'users', local);
+
+        // 🔄 Abwesenheiten abrufen
+        try {
+          const resp = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=${encodeURIComponent(local.username)}`);
+          if (resp.ok) {
+            const abs = await resp.json();
+            local.absences = abs;
+            await idbPut(DB, 'users', local);
+          }
+        } catch (e) {
+          console.warn('⚠️ Abwesenheiten konnten nicht aus Cloud geladen werden', e);
+        }
+
+        STATE.currentUser = local.username;
+        localStorage.setItem('zm_lastUser', local.username);
+
+        // 🧹 Begrüßung noch nicht anzeigen
+        const greeting = document.getElementById('greeting');
+        if (greeting) {
+          greeting.innerHTML = '';
+          greeting.style.display = 'none';
+        }
+
+        document.getElementById('logoutBtn').style.display = 'inline-block';
+        setLoading(false);
+
+        // ⏱ Letzter Login
+        local.lastOnline = Date.now();
+        await idbPut(DB, 'users', local);
+
+        const gm = openModal(`<h3>Hallo ${local.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+        setTimeout(() => {
+          closeModal();
+          if (local.pwExpired) {
+            renderChangePassword(true);
+          } else {
+            renderDashboard();
+          }
+        }, 900);
+        return;
+      }
+
+      // 4️⃣ Fallback → Lokaler User
+      const user = await idbGet(DB, 'users', u);
+      if (!user) {
+        setLoading(false);
+        alert('Benutzer nicht gefunden.');
+        return;
+      }
+      if (user.password !== p) {
         setLoading(false);
         alert('Falsches Passwort.');
         return;
       }
 
-      // 3) Lokalen User synchron halten (für Rolle/Name etc.)
-      let local = await idbGet(DB, 'users', u);
-      if (!local) {
-        local = {
-          username: cloudUser.username,
-          password: '***cloud***',     // nicht verwendet
-          displayName: cloudUser.displayName || cloudUser.username,
-          role: cloudUser.role || 'User',
-          pwExpired: !!cloudUser.pwExpired
-        };
-      } else {
-        local.displayName = cloudUser.displayName || local.displayName;
-        local.role = cloudUser.role || local.role;
-        local.pwExpired = !!cloudUser.pwExpired;
-      }
-      await idbPut(DB, 'users', local);
-// 🔄 Abwesenheiten aus Cloud abrufen
-try {
-  const resp = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=${encodeURIComponent(local.username)}`);
-  if (resp.ok) {
-    const abs = await resp.json();
-    local.absences = abs;
-    await idbPut(DB, 'users', local);
-  }
-} catch (e) {
-  console.warn('⚠️ Abwesenheiten konnten nicht aus Cloud geladen werden', e);
-}
+      STATE.currentUser = user.username;
+      localStorage.setItem('zm_lastUser', user.username);
 
-      STATE.currentUser = local.username;
-      localStorage.setItem('zm_lastUser', local.username);
-   //   document.getElementById('greeting').textContent = 'Hallo ' + local.displayName + ' 👋';
+      // 🧹 Begrüßung wieder leeren
+      const greeting = document.getElementById('greeting');
+      if (greeting) {
+        greeting.innerHTML = '';
+        greeting.style.display = 'none';
+      }
+
       document.getElementById('logoutBtn').style.display = 'inline-block';
       setLoading(false);
-      // 🕒 "Zuletzt online" speichern (Cloud-User)
-local.lastOnline = Date.now();
-await idbPut(DB, 'users', local);
 
+      // ⏱ Letzter Login speichern
+      user.lastOnline = Date.now();
+      await idbPut(DB, 'users', user);
 
-      const gm = openModal(`<h3>Hallo ${local.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
-      setTimeout(() => { closeModal(); if (local.pwExpired) { renderChangePassword(true); } else { renderDashboard(); } }, 900);
-      return;
+      const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+      setTimeout(() => {
+        closeModal();
+        if (user.pwExpired) {
+          renderChangePassword(true);
+        } else {
+          renderDashboard();
+        }
+      }, 900);
+
+    } catch (e) {
+      setLoading(false);
+      alert('Fehler beim Einloggen');
     }
-
-    // 4) Fallback: Kein KV-User -> lokaler Demo-User
-    const user = await idbGet(DB, 'users', u);
-    if (!user) { setLoading(false); alert('Benutzer nicht gefunden.'); return; }
-    if (user.password !== p) { setLoading(false); alert('Falsches Passwort.'); return; }
-
-    STATE.currentUser = user.username;
-    localStorage.setItem('zm_lastUser', user.username);
-   // document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
-    document.getElementById('logoutBtn').style.display = 'inline-block';
-    setLoading(false);
-    // 🕒 "Zuletzt online" speichern (Lokaler User)
-user.lastOnline = Date.now();
-await idbPut(DB, 'users', user);
-
-    const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
-    setTimeout(() => { closeModal(); if (user.pwExpired) { renderChangePassword(true); } else { renderDashboard(); } }, 900);
-
-  } catch (e) {
-    setLoading(false);
-    alert('Fehler beim Einloggen');
-  }
-});
-    }
+  });
+}
     
     // ---------------------------
     // Password change (forced on first login)
@@ -636,8 +707,9 @@ async function syncAbsencesFromCloud() {
 async function renderDashboard() {
   await syncFromCloud();
   await syncAbsencesFromCloud();
+
   const greetingEl = document.getElementById('greeting');
-if (greetingEl) greetingEl.style.display = '';
+  if (greetingEl) greetingEl.style.display = ''; // Falls ausgeblendet durch Login
 
   const user = await idbGet(DB, 'users', STATE.currentUser);
   if (!user) return renderLogin();
@@ -671,13 +743,13 @@ if (greetingEl) greetingEl.style.display = '';
         </div>
 
         <div class="centered" style="margin-top:10px">
-  <button id="forgotBtn" class="accent">Zeiten manuell nachtragen</button>
-</div>
-<div class="centered" style="margin-top:6px">
-  <button id="absenceBtn" class="accent" style="min-width:180px;">
-    Meine Abwesenheiten
-  </button>
-</div>
+          <button id="forgotBtn" class="accent">Zeiten manuell nachtragen</button>
+        </div>
+        <div class="centered" style="margin-top:6px">
+          <button id="absenceBtn" class="accent" style="min-width:180px;">
+            Meine Abwesenheiten
+          </button>
+        </div>
       </section>
 
       <aside class="timer-panel" aria-label="Timer Panel">
@@ -816,18 +888,16 @@ if (greetingEl) greetingEl.style.display = '';
 
   // Kategorien + Stats
   await renderCategoryList();
-renderStats();
+  renderStats();
 
-// -----------------------------
-// Abwesenheiten-Panel (für Admins UND User)
-// -----------------------------
-const statsPanel = document.getElementById('statsPanel');
-if (statsPanel) {
-  const absPanel = await renderAbsencePanel(isAdmin ? null : STATE.currentUser);
-  statsPanel.appendChild(absPanel);
-
-  
-}
+  // -----------------------------
+  // Abwesenheiten-Panel
+  // -----------------------------
+  const statsPanel = document.getElementById('statsPanel');
+  if (statsPanel) {
+    const absPanel = await renderAbsencePanel(isAdmin ? null : STATE.currentUser);
+    statsPanel.appendChild(absPanel);
+  }
 
   // -----------------------------
   // Admin-spezifische Panels
@@ -838,27 +908,11 @@ if (statsPanel) {
       const panel = document.createElement('div');
       panel.style.marginTop = '12px';
       panel.innerHTML = `
-        <div id="adminHeader" style="
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-          cursor:pointer;
-          background:var(--card-bg, var(--bg));
-          padding:6px 8px;
-          border-radius:8px;
-          border:1px solid var(--border);
-        ">
+        <div id="adminHeader" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--card-bg, var(--bg));padding:6px 8px;border-radius:8px;border:1px solid var(--border);">
           <div style="font-weight:600;color:var(--text)">Admin-Funktionen</div>
           <div id="adminToggle" style="color:var(--muted)">Ausklappen ▾</div>
         </div>
-        <div id="adminContent" style="
-          display:none;
-          margin-top:6px;
-          padding:8px;
-          background:var(--surface, var(--bg));
-          border:1px solid var(--border);
-          border-radius:8px;
-        ">
+        <div id="adminContent" style="display:none;margin-top:6px;padding:8px;background:var(--surface, var(--bg));border:1px solid var(--border);border-radius:8px;">
           <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
           <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
           <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
@@ -867,8 +921,7 @@ if (statsPanel) {
             <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
             <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
           </div>
-        </div>
-      `;
+        </div>`;
       catsPanel.appendChild(panel);
 
       const adminHeader = panel.querySelector('#adminHeader');
@@ -897,108 +950,58 @@ if (statsPanel) {
   }
 
   // -----------------------------
-  // Begrüßung + Dashboard-Unterzeile
+  // Dashboard-Begrüßung (nur sichtbar im Dashboard)
   // -----------------------------
-//  const greetingEl = document.getElementById('greeting');
-//  greetingEl.innerHTML = `
-//  <div style="
-//    font-size:0.9rem;
-//   color:var(--muted);
-//    margin-top:-4px;
-//    text-align:left;
-//  ">
-//    👋 Hallo ${user.displayName}
-//  </div>`;
+  const oldGreet = document.getElementById('greetingTop');
+  if (oldGreet) oldGreet.remove();
 
-
-  let dashSubtitle = document.getElementById('dashboardSubtitle');
-  if (!dashSubtitle) {
-    dashSubtitle = document.createElement('div');
-    dashSubtitle.id = 'dashboardSubtitle';
-    dashSubtitle.style.fontSize = '1.1rem';
-    dashSubtitle.style.color = 'var(--muted)';
-    dashSubtitle.style.margin = '4px 0 12px 4px';
-    dashSubtitle.style.fontWeight = '500';
-    dashSubtitle.style.textAlign = 'left';
-
-    const h1 = document.querySelector('h1');
-    if (h1 && h1.parentElement) {
-      h1.insertAdjacentElement('afterend', dashSubtitle);
-    } else {
-      const main = document.getElementById('mainContent');
-      if (main) main.prepend(dashSubtitle);
-    }
+  const header = document.querySelector('header');
+  if (header && STATE.currentUser) {
+    const greet = document.createElement('div');
+    greet.id = 'greetingTop';
+    greet.style.fontSize = '0.8rem';
+    greet.style.color = 'var(--muted)';
+    greet.style.margin = '6px 12px 0 0';
+    greet.style.textAlign = 'right';
+    greet.style.whiteSpace = 'nowrap';
+    greet.textContent = `👋 Hallo ${user.displayName}`;
+    header.insertAdjacentElement('afterend', greet);
   }
 
-  dashSubtitle.textContent = isAdmin ? '🧑‍💼 Admin-Dashboard' : '👤 User-Dashboard';
+  // -----------------------------
+  // Wochenübersicht als Toast (oben rechts)
+  // -----------------------------
+  const totalMin = await getWeeklyTotalMinutes();
+  const msg = totalMin > 0
+    ? `Du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`
+    : `Noch keine erfassten Zeiten für Projekte in dieser Woche.`;
 
+  document.getElementById('weeklyToast')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'weeklyToast';
+  toast.textContent = msg;
 
-// 💬 Wochenübersicht als temporärer Einblender (Toast oben rechts)
-const totalMin = await getWeeklyTotalMinutes();
-const msg = totalMin > 0
-  ? `Du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`
-  : `Noch keine erfassten Zeiten für Projekte in dieser Woche.`;
-
-// Vorherigen Toast entfernen, falls vorhanden
-document.getElementById('weeklyToast')?.remove();
-
-const toast = document.createElement('div');
-toast.id = 'weeklyToast';
-toast.textContent = msg;
-
-// 🔧 Stil: oben rechts
-toast.style.position = 'fixed';
-toast.style.top = '20px';
-toast.style.right = '20px';
-toast.style.zIndex = '9999';
-toast.style.background = 'linear-gradient(90deg,#ff7a18,#af002d 70%)';
-toast.style.color = '#fff';
-toast.style.padding = '10px 18px';
-toast.style.borderRadius = '20px';
-toast.style.fontSize = '0.9rem';
-toast.style.fontWeight = '500';
-toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-toast.style.opacity = '0';
-toast.style.transition = 'opacity 0.4s ease';
-
-document.body.appendChild(toast);
-
-// ✨ Einblenden
-setTimeout(() => toast.style.opacity = '1', 100);
-
-// ⏱️ Nach 4 Sekunden ausblenden
-setTimeout(() => {
+  toast.style.position = 'fixed';
+  toast.style.top = '20px';
+  toast.style.right = '20px';
+  toast.style.zIndex = '9999';
+  toast.style.background = 'linear-gradient(90deg,#ff7a18,#af002d 70%)';
+  toast.style.color = '#fff';
+  toast.style.padding = '10px 18px';
+  toast.style.borderRadius = '20px';
+  toast.style.fontSize = '0.9rem';
+  toast.style.fontWeight = '500';
+  toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
   toast.style.opacity = '0';
-  setTimeout(() => toast.remove(), 400);
-}, 4000);
-
-
-// 👋 Begrüßung unterhalb des Headers, nur im Dashboard
-const header = document.querySelector('header');
-const oldGreet = document.getElementById('greetingTop');
-if (oldGreet) oldGreet.remove();
-
-// Zeige Begrüßung NUR, wenn Dashboard aktiv ist und ein Nutzer eingeloggt ist
-if (header && document.getElementById('mainContent') && STATE.currentUser) {
-  const greet = document.createElement('div');
-  greet.id = 'greetingTop';
-  greet.style.fontSize = '0.8rem';
-  greet.style.color = 'var(--muted)';
-  greet.style.margin = '6px 12px 0 0';
-  greet.style.textAlign = 'right';
-  greet.style.whiteSpace = 'nowrap';
-  greet.textContent = `👋 Hallo ${user.displayName}`;
-
-  // Einfügen direkt nach Header
-  header.insertAdjacentElement('afterend', greet);
+  toast.style.transition = 'opacity 0.4s ease';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.style.opacity = '1', 100);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
 }
 
-
-
-
-
-
-}
 
 
     
