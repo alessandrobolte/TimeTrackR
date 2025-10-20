@@ -819,7 +819,7 @@ async function syncAbsencesFromCloud() {
   document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
 
 // ---------------------------
-// Adminpanel mit Userverwaltung (einklappbar + sicherer Listener)
+// Adminpanel mit Userverwaltung (robuste Variante)
 // ---------------------------
 if (isAdmin) {
   const catsPanel = document.querySelector('.cats-panel');
@@ -857,11 +857,10 @@ if (isAdmin) {
         </div>
       </div>
     `;
-    
-    // Füge den gesamten Panelblock zuerst ins DOM ein:
+
     catsPanel.appendChild(panel);
 
-    // 🔒 Jetzt Elemente innerhalb des Panels holen (lokal, nicht global)
+    // 🧩 Alle Elemente innerhalb des Panels suchen
     const adminHeader = panel.querySelector('#adminHeader');
     const adminContent = panel.querySelector('#adminContent');
     const adminToggle = panel.querySelector('#adminToggle');
@@ -870,25 +869,37 @@ if (isAdmin) {
     const addBtn = panel.querySelector('#addUserBtn');
     const userSelect = panel.querySelector('#userSelect');
 
-    // 🧩 Toggle-Funktion sicher setzen
-    adminHeader.addEventListener('click', () => {
-      const open = adminContent.style.display === 'block';
-      adminContent.style.display = open ? 'none' : 'block';
-      adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-    });
+    // 🧠 Nur wenn Element existiert → Eventlistener setzen
+    if (adminHeader && adminContent && adminToggle) {
+      adminHeader.addEventListener('click', () => {
+        const open = adminContent.style.display === 'block';
+        adminContent.style.display = open ? 'none' : 'block';
+        adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+      });
+    }
 
-    // 🔗 Button-Events sicher verdrahten
-    viewBtn.addEventListener('click', showAdminView);
-    resetBtn.addEventListener('click', async () => {
-      const name = userSelect?.value;
-      if (name) await resetUserPassword(name);
-    });
-    addBtn.addEventListener('click', addNewUser);
+    if (viewBtn) {
+      viewBtn.addEventListener('click', showAdminView);
+    }
 
-    // 🧠 Benutzerliste füllen
-    populateUserDropdown();
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async () => {
+        const name = userSelect?.value;
+        if (name) await resetUserPassword(name);
+      });
+    }
+
+    if (addBtn) {
+      addBtn.addEventListener('click', addNewUser);
+    }
+
+    // 🔁 Benutzerliste füllen, falls Funktion vorhanden
+    if (typeof populateUserDropdown === 'function') {
+      populateUserDropdown();
+    }
   }
 }
+
 
 
 }
