@@ -1004,17 +1004,7 @@ async function openAbsenceModal() {
 
   user.absences = user.absences || [];
 
-  // 📅 Hilfsfunktion für Datumsformat mit Wochentag
-  function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('de-DE', {
-    weekday: 'short',  // ← hier stand vorher der abgekürzte Wochentag
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+
 
 const list = user.absences
   .map((a, i) => `<tr>
@@ -2681,7 +2671,7 @@ function formatDateDE(dateStr) {
     month: '2-digit',
     year: 'numeric'
   });
-}}
+}
 
     </script>
     
