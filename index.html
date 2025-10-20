@@ -2287,53 +2287,87 @@ async function populateUserDropdown() {
     .join('');
 }
 
-// Passwort eines ausgewählten Benutzers zurücksetzen
+// Passwort eines ausgewählten Benutzers auf INIT_PW zurücksetzen + Cloud-Sync
 async function resetUserPassword(username) {
   const user = await idbGet(DB, 'users', username);
-  if (!user) {
-    alert('Benutzer nicht gefunden.');
-    return;
-  }
+  if (!user) { alert('Benutzer nicht gefunden.'); return; }
 
-  const confirmReset = confirm(
-    `Passwort von "${user.displayName}" (${user.username}) auf das Initialpasswort "Stadtwerke1" zurücksetzen?`
+  const ok = confirm(
+    `Passwort von "${user.displayName}" (${user.username}) auf das Initialpasswort "${INIT_PW}" zurücksetzen?`
   );
-  if (!confirmReset) return;
+  if (!ok) return;
 
-  user.password = 'Stadtwerke1';
+  // Lokal zurücksetzen
+  user.password = INIT_PW;
   user.pwExpired = true;
   await idbPut(DB, 'users', user);
+
+  // Cloud: gehashte Variante speichern
+  try {
+    const passwordHash = await sha256Hex(INIT_PW);
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveUser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: user.username,
+        passwordHash,
+        displayName: user.displayName,
+        role: user.role,
+        pwExpired: true
+      })
+    });
+  } catch (err) {
+    console.warn("⚠️ Cloud-Reset fehlgeschlagen:", err);
+  }
+
   showToast(`Passwort für ${user.displayName} wurde zurückgesetzt.`);
 }
 
-// Neuen Benutzer hinzufügen
+
+// Neuen Benutzer mit INIT_PW anlegen + Cloud-Sync
 async function addNewUser() {
   const username = prompt('Benutzername (Login-Name, klein geschrieben):');
   if (!username) return;
 
   const existing = await idbGet(DB, 'users', username);
-  if (existing) {
-    alert('Dieser Benutzername existiert bereits.');
-    return;
-  }
+  if (existing) { alert('Dieser Benutzername existiert bereits.'); return; }
 
   const displayName = prompt('Anzeigename (z. B. "Max Mustermann"):') || username;
-  const role = confirm('Soll der Benutzer Administratorrechte haben?')
-    ? 'Administrator'
-    : 'User';
+  const role = confirm('Soll der Benutzer Administratorrechte haben?') ? 'Administrator' : 'User';
 
   const newUser = {
     username,
-    password: 'Stadtwerke1',
+    password: INIT_PW,   // immer Stadtwerke1 lokal
     displayName,
     role,
     pwExpired: true
   };
 
+  // Lokal anlegen
   await idbPut(DB, 'users', newUser);
-  await populateUserDropdown(); // Dropdown direkt aktualisieren
-  showToast(`Benutzer "${displayName}" wurde angelegt (Initialpasswort: Stadtwerke1).`);
+
+  // Cloud: gehashtes Initialpasswort
+  try {
+    const passwordHash = await sha256Hex(INIT_PW);
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveUser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        passwordHash,
+        displayName,
+        role,
+        pwExpired: true
+      })
+    });
+  } catch (err) {
+    console.warn("⚠️ Cloud-Anlage fehlgeschlagen:", err);
+  }
+
+  await populateUserDropdown(); // Dropdown erneuern
+  showToast(`Benutzer "${displayName}" wurde angelegt (Initialpasswort: ${INIT_PW}).`);
 }
+
 
     // Done.
     </script>
