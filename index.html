@@ -815,24 +815,95 @@ async function renderDashboard() {
   await renderCategoryList();
   renderStats();
 
-  // -----------------------------
-  // Admin-spezifische Panels
-  // -----------------------------
-  if (isAdmin) {
-    const statsPanel = document.getElementById('statsPanel');
-    if (statsPanel) {
-      const absPanel = await renderAbsencePanel();
-      statsPanel.appendChild(absPanel);
-      const toggle = absPanel?.querySelector('#toggleAbsences');
-      if (toggle) {
-        toggle.addEventListener('click', () => {
-          const cont = absPanel.querySelector('#absencesContent');
-          const open = cont.style.display === 'block';
-          cont.style.display = open ? 'none' : 'block';
-          toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-        });
-      }
+// -----------------------------
+// Abwesenheiten-Panel (für Admins UND User)
+// -----------------------------
+const statsPanel = document.getElementById('statsPanel');
+if (statsPanel) {
+  const absPanel = await renderAbsencePanel();
+  statsPanel.appendChild(absPanel);
+
+  const toggle = absPanel?.querySelector('#absencesToggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      const cont = absPanel.querySelector('#absencesContent');
+      const open = cont.style.display === 'block';
+      cont.style.display = open ? 'none' : 'block';
+      toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    });
+  }
+}
+
+// -----------------------------
+// Admin-spezifische Panels
+// -----------------------------
+if (isAdmin) {
+  // Adminpanel für Benutzerverwaltung
+  const catsPanel = document.querySelector('.cats-panel');
+  if (catsPanel) {
+    const panel = document.createElement('div');
+    panel.style.marginTop = '12px';
+    panel.innerHTML = `
+      <div id="adminHeader" style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        cursor:pointer;
+        background:var(--card-bg, var(--bg));
+        padding:6px 8px;
+        border-radius:8px;
+        border:1px solid var(--border);
+      ">
+        <div style="font-weight:600;color:var(--text)">Admin-Funktionen</div>
+        <div id="adminToggle" style="color:var(--muted)">Ausklappen ▾</div>
+      </div>
+
+      <div id="adminContent" style="
+        display:none;
+        margin-top:6px;
+        padding:8px;
+        background:var(--surface, var(--bg));
+        border:1px solid var(--border);
+        border-radius:8px;
+      ">
+        <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+        <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+          <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+          <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+        </div>
+      </div>
+    `;
+
+    catsPanel.appendChild(panel);
+
+    const adminHeader = panel.querySelector('#adminHeader');
+    const adminContent = panel.querySelector('#adminContent');
+    const adminToggle = panel.querySelector('#adminToggle');
+    const viewBtn = panel.querySelector('#adminViewBtn');
+    const resetBtn = panel.querySelector('#resetUserPwBtn');
+    const addBtn = panel.querySelector('#addUserBtn');
+    const userSelect = panel.querySelector('#userSelect');
+
+    if (adminHeader && adminContent && adminToggle) {
+      adminHeader.addEventListener('click', () => {
+        const open = adminContent.style.display === 'block';
+        adminContent.style.display = open ? 'none' : 'block';
+        adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+      });
     }
+    if (viewBtn) viewBtn.addEventListener('click', showAdminView);
+    if (resetBtn) resetBtn.addEventListener('click', async () => {
+      const name = userSelect?.value;
+      if (name) await resetUserPassword(name);
+    });
+    if (addBtn) addBtn.addEventListener('click', addNewUser);
+    if (typeof populateUserDropdown === 'function') populateUserDropdown();
+  }
+}
+
 
     // Adminpanel für Benutzerverwaltung
     const catsPanel = document.querySelector('.cats-panel');
