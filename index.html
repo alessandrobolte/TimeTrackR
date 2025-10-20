@@ -2553,6 +2553,62 @@ async function addNewUser() {
 
 
     // Done.
+    // 🌐 Automatischer Cloud-Sync alle 30 Sekunden
+async function autoSyncToCloud() {
+  try {
+    // Nutzer prüfen
+    if (!STATE.currentUser) return;
+
+    // Alle beendeten Sessions laden
+    const allSessions = await idbGetAll(DB, 'sessions');
+    const userSessions = allSessions.filter(s => !!s.category && !!s.durationMin);
+
+    // Sessions gruppieren nach Benutzername
+    const grouped = {};
+    for (const s of userSessions) {
+      if (!grouped[s.owner]) grouped[s.owner] = [];
+      grouped[s.owner].push(s);
+    }
+
+    // 🔁 Hochladen
+    for (const [username, sessions] of Object.entries(grouped)) {
+      await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveSession', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          sessions
+        })
+      });
+    }
+
+    // 🗓️ Abwesenheiten hochladen
+    const users = await idbGetAll(DB, 'users');
+    for (const u of users) {
+      if (u.absences && u.absences.length > 0) {
+        await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveAbsence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u.username, absences: u.absences })
+        });
+      }
+    }
+
+    console.log('🌐 Auto-Sync erfolgreich abgeschlossen');
+  } catch (err) {
+    console.warn('⚠️ Auto-Sync Fehler:', err);
+  }
+}
+
+// ⏱️ Intervall starten (alle 30 Sekunden)
+setInterval(() => {
+  if (navigator.onLine) {
+    autoSyncToCloud();
+  } else {
+    console.log('📴 Offline – Auto-Sync übersprungen');
+  }
+}, 30 * 1000);
+
     </script>
     
 </body>
