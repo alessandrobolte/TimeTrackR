@@ -674,18 +674,19 @@ async function syncAbsencesFromCloud() {
         </div>
     
         <section class="stats-panel" id="statsPanel">
-          <div class="stats-header">
-            <div style="display:flex;gap:10px;align-items:center">
-              <div id="statsTitle" style="font-weight:700">Statistiken</div>
-              <div id="rangeButtons" style="display:flex;gap:6px">
-                <button class="small" data-range="7">Letzte 7 Tage</button>
-                <button class="small" data-range="14">Letzte 14 Tage</button>
-                <button class="small" data-range="30">30 Tage</button>
-                <button class="small" data-range="all">Gesamt</button>
-              </div>
-            </div>
-            <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
-          </div>
+         <div class="stats-header">
+  <div style="font-weight:700">Statistiken</div>
+  <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
+</div>
+
+<div id="statsContent" style="display:none;margin-top:10px">
+  <div id="rangeButtons" style="display:flex;gap:6px;margin-bottom:10px">
+    <button class="small" data-range="7">Letzte 7 Tage</button>
+    <button class="small" data-range="14">Letzte 14 Tage</button>
+    <button class="small" data-range="30">30 Tage</button>
+    <button class="small" data-range="all">Gesamt</button>
+  </div>
+
     
           <div id="statsContent" style="display:none;margin-top:10px">
             <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
