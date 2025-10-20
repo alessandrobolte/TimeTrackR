@@ -394,6 +394,17 @@ async function init() {
         local.pwExpired = !!cloudUser.pwExpired;
       }
       await idbPut(DB, 'users', local);
+// 🔄 Abwesenheiten aus Cloud abrufen
+try {
+  const resp = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=${encodeURIComponent(local.username)}`);
+  if (resp.ok) {
+    const abs = await resp.json();
+    local.absences = abs;
+    await idbPut(DB, 'users', local);
+  }
+} catch (e) {
+  console.warn('⚠️ Abwesenheiten konnten nicht aus Cloud geladen werden', e);
+}
 
       STATE.currentUser = local.username;
       localStorage.setItem('zm_lastUser', local.username);
@@ -805,6 +816,17 @@ async function openAbsenceModal() {
     user.absences.push({ from, to, note });
     await idbPut(DB, 'users', user);
     showToast('Abwesenheit hinzugefügt ✅');
+    // ☁️ Cloud-Sync
+try {
+  await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveAbsence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, absences: user.absences })
+  });
+} catch (err) {
+  console.warn('⚠️ Cloud-Sync fehlgeschlagen', err);
+}
+
     closeModal();
     openAbsenceModal();
   };
@@ -816,31 +838,64 @@ async function openAbsenceModal() {
       user.absences.splice(idx, 1);
       await idbPut(DB, 'users', user);
       showToast('Abwesenheit gelöscht');
+      // ☁️ Cloud-Sync
+try {
+  await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveAbsence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, absences: user.absences })
+  });
+} catch (err) {
+  console.warn('⚠️ Cloud-Sync fehlgeschlagen', err);
+}
+
       closeModal();
       openAbsenceModal();
     };
   });
 }
 
-// Admin sieht alle Abwesenheiten
+// Admin sieht alle Abwesenheiten (mit Cloud-Live-Sync)
 async function renderAbsencePanel() {
   const users = await idbGetAll(DB, 'users');
   if (!users || users.length === 0) return '';
 
-  // Nur künftige Abwesenheiten
+  let allAbsences = {};
+
+  // Wenn Admin → Live-Sync aus der Cloud
+  const currentUser = STATE.currentUser;
+  const user = users.find(u => u.username === currentUser);
+  const isAdmin = user && user.role === 'Administrator';
+  if (isAdmin) {
+    try {
+      const resp = await fetch('https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=all');
+      if (resp.ok) {
+        allAbsences = await resp.json();
+      }
+    } catch (err) {
+      console.warn('⚠️ Cloud-Live-Abfragen fehlgeschlagen:', err);
+    }
+  }
+
+  // Kombiniere lokale + Cloud-Daten
   const now = new Date().toISOString().slice(0,10);
-  const rows = users
-    .flatMap(u =>
-      (u.absences || [])
-        .filter(a => a.to >= now)
-        .map(a => ({
-          name: u.displayName,
-          from: a.from,
-          to: a.to,
-          note: a.note || ''
-        }))
-    )
-    .sort((a,b) => a.from.localeCompare(b.from));
+  const rows = [];
+
+  for (const u of users) {
+    const abs = isAdmin
+      ? (allAbsences[u.username] || [])
+      : (u.absences || []);
+    abs
+      .filter(a => a.to >= now)
+      .forEach(a => rows.push({
+        name: u.displayName,
+        from: a.from,
+        to: a.to,
+        note: a.note || ''
+      }));
+  }
+
+  rows.sort((a,b)=>a.from.localeCompare(b.from));
 
   const tr = rows.map(r =>
     `<tr>
@@ -851,7 +906,7 @@ async function renderAbsencePanel() {
     </tr>`
   ).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
 
-  // Zuletzt online-Spalte
+  // Zuletzt online
   const lastOnline = users
     .map(u => `<tr>
       <td>${escapeHtml(u.displayName)}</td>
@@ -859,35 +914,31 @@ async function renderAbsencePanel() {
     </tr>`)
     .join('');
 
- // Kalenderdaten vorbereiten
-const calendarEl = renderAbsenceCalendar(rows);
+  const calendarEl = renderAbsenceCalendar(rows);
 
-const wrapper = document.createElement('div');
-wrapper.style.marginTop = '16px';
-wrapper.innerHTML = `
-  <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
-  <div id="absencesContent" style="display:none;margin-top:8px">
-    <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
-    <table style="width:100%;margin-bottom:14px">
-      <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
-      <tbody>${tr}</tbody>
-    </table>
-    <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
-    <table style="width:100%;margin-bottom:14px">
-      <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
-      <tbody>${lastOnline}</tbody>
-    </table>
-    <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
-  </div>
-`;
+  const wrapper = document.createElement('div');
+  wrapper.style.marginTop = '16px';
+  wrapper.innerHTML = `
+    <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
+    <div id="absencesContent" style="display:none;margin-top:8px">
+      <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+        <tbody>${tr}</tbody>
+      </table>
+      <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
+        <tbody>${lastOnline}</tbody>
+      </table>
+      <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
+    </div>
+  `;
 
-// Kalender-Element wirklich einfügen
-wrapper.querySelector('#absencesContent').appendChild(calendarEl);
-
-return wrapper;
-
-
+  wrapper.querySelector('#absencesContent').appendChild(calendarEl);
+  return wrapper;
 }
+
 // ---------------------------
 // Monatskalender mit Navigation (Admin)
 // ---------------------------
