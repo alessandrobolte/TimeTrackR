@@ -71,6 +71,12 @@
   .toggle-details{cursor:pointer;color:var(--muted);font-size:0.95rem}
   .charts{display:grid;grid-template-columns:1fr 420px;gap:12px;margin-top:12px}
   canvas{background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent);border-radius:10px;padding:8px}
+  .absence-calendar button.small.ghost {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px 6px;text-align:left;border-bottom:1px dashed rgba(0,0,0,0.06)}
   .sessions-list{max-height:220px;overflow:auto}
@@ -854,24 +860,138 @@ async function renderAbsencePanel() {
     </tr>`)
     .join('');
 
-  return `
-    <div style="margin-top:16px">
-      <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
-      <div id="absencesContent" style="display:none;margin-top:8px">
-        <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
-        <table style="width:100%;margin-bottom:14px">
-          <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
-          <tbody>${tr}</tbody>
-        </table>
-        <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
-        <table style="width:100%">
-          <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
-          <tbody>${lastOnline}</tbody>
-        </table>
-      </div>
+ // Kalenderdaten vorbereiten
+const calendarHTML = renderAbsenceCalendar(rows);
+
+return `
+  <div style="margin-top:16px">
+    <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
+    <div id="absencesContent" style="display:none;margin-top:8px">
+      <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+        <tbody>${tr}</tbody>
+      </table>
+      <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
+        <tbody>${lastOnline}</tbody>
+      </table>
+      <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
+      ${calendarHTML}
     </div>
-  `;
+  </div>
+`;
+
 }
+// ---------------------------
+// Monatskalender mit Navigation (Admin)
+// ---------------------------
+function renderAbsenceCalendar(absences) {
+  // Wrapper erzeugen
+  const container = document.createElement('div');
+  container.className = 'absence-calendar';
+  container.dataset.year = new Date().getFullYear();
+  container.dataset.month = new Date().getMonth();
+
+  function drawCalendar(year, month) {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const today = new Date();
+
+    // Abwesenheiten-Mapping
+    const map = {};
+    absences.forEach(a => {
+      const from = new Date(a.from);
+      const to = new Date(a.to);
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        if (!map[key]) map[key] = [];
+        map[key].push(a.name);
+      }
+    });
+
+    const monthName = new Date(year, month, 1).toLocaleString('de-DE', {
+      month: 'long',
+      year: 'numeric'
+    });
+    const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    const startOffset = (firstDay.getDay() + 6) % 7;
+
+    // Header mit Navigation
+    let html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <button id="prevMonth" class="small ghost">←</button>
+        <div style="font-weight:600">${monthName}</div>
+        <button id="nextMonth" class="small ghost">→</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:0.8rem;text-align:center;color:var(--muted);margin-bottom:4px">
+        ${weekdays.map(w => `<div>${w}</div>`).join('')}
+      </div>
+      <div class="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
+    `;
+
+    for (let i = 0; i < startOffset; i++) html += `<div></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const dateStr = date.toISOString().slice(0, 10);
+      const names = map[dateStr];
+      const hasAbs = !!names;
+      const bg = hasAbs ? 'rgba(255,99,71,0.15)' : 'var(--panel)';
+      const border = hasAbs
+        ? '1px solid rgba(255,99,71,0.4)'
+        : '1px solid rgba(0,0,0,0.05)';
+      const tooltip = hasAbs ? names.join(', ') : '';
+      const highlight =
+        date.toDateString() === today.toDateString()
+          ? 'outline:1px solid var(--accent2);'
+          : '';
+
+      html += `
+        <div title="${escapeHtml(tooltip)}"
+             style="background:${bg};border:${border};border-radius:8px;padding:6px;min-height:36px;position:relative;${highlight}">
+          <div style="font-size:0.9rem">${d}</div>
+          ${
+            hasAbs
+              ? `<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:6px;height:6px;background:tomato;border-radius:50%"></div>`
+              : ''
+          }
+        </div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+
+    // Navigation ankoppeln
+    container.querySelector('#prevMonth').onclick = () => {
+      let y = parseInt(container.dataset.year);
+      let m = parseInt(container.dataset.month) - 1;
+      if (m < 0) { m = 11; y--; }
+      container.dataset.year = y;
+      container.dataset.month = m;
+      drawCalendar(y, m);
+    };
+
+    container.querySelector('#nextMonth').onclick = () => {
+      let y = parseInt(container.dataset.year);
+      let m = parseInt(container.dataset.month) + 1;
+      if (m > 11) { m = 0; y++; }
+      container.dataset.year = y;
+      container.dataset.month = m;
+      drawCalendar(y, m);
+    };
+  }
+
+  drawCalendar(
+    parseInt(container.dataset.year),
+    parseInt(container.dataset.month)
+  );
+
+  return container.outerHTML;
+}
+
 
 
     // ---------------------------
