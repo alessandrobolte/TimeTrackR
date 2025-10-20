@@ -1029,77 +1029,58 @@ try {
 }
 
 // Abwesenheiten: Admin (mit Filter) & User (nur eigene)
-async function renderAbsencePanel() {
+async function renderAbsencePanel(filterUser = null) {
   const users = await idbGetAll(DB, 'users');
   if (!users || users.length === 0) return '';
+
+  let allAbsences = {};
 
   const currentUser = STATE.currentUser;
   const user = users.find(u => u.username === currentUser);
   const isAdmin = user && user.role === 'Administrator';
 
-  let allAbsences = {};
-  try {
-    // Wenn Admin → Cloud laden
-    if (isAdmin) {
+  // 🔹 Nur Admin lädt Cloud-Daten
+  if (isAdmin) {
+    try {
       const resp = await fetch('https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=all');
-      if (resp.ok) allAbsences = await resp.json();
+      if (resp.ok) {
+        allAbsences = await resp.json();
+      }
+    } catch (err) {
+      console.warn('⚠️ Cloud-Live-Abfragen fehlgeschlagen:', err);
     }
-  } catch (err) {
-    console.warn('⚠️ Cloud-Live-Abfragen fehlgeschlagen:', err);
   }
 
-  // Kombiniere lokale + Cloud-Daten
   const now = new Date().toISOString().slice(0, 10);
-  let absRows = [];
+  const rows = [];
 
-  if (isAdmin) {
-    for (const u of users) {
-      const abs = allAbsences[u.username] || [];
-      abs
-        .filter(a => a.to >= now)
-        .forEach(a => absRows.push({
-          username: u.username,
-          name: u.displayName,
-          from: a.from,
-          to: a.to,
-          note: a.note || ''
-        }));
-    }
-  } else {
-    const abs = user.absences || [];
+  for (const u of users) {
+    if (filterUser && u.username !== filterUser) continue; // ⬅️ Nur eigener User, falls angegeben
+
+    const abs = isAdmin ? (allAbsences[u.username] || []) : (u.absences || []);
     abs
       .filter(a => a.to >= now)
-      .forEach(a => absRows.push({
-        username: user.username,
-        name: user.displayName,
+      .forEach(a => rows.push({
+        name: u.displayName,
         from: a.from,
         to: a.to,
         note: a.note || ''
       }));
   }
 
-  absRows.sort((a, b) => a.from.localeCompare(b.from));
+  rows.sort((a, b) => a.from.localeCompare(b.from));
 
-  // Filter-Auswahl (nur für Admin)
-  const userOptions = isAdmin
-    ? ['<option value="all">Alle Benutzer</option>', ...users.map(u => `<option value="${u.username}">${escapeHtml(u.displayName)}</option>`)].join('')
-    : '';
+  const tr = rows.map(r =>
+    `<tr>
+      ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
+      <td>${r.from}</td>
+      <td>${r.to}</td>
+      <td>${escapeHtml(r.note)}</td>
+    </tr>`
+  ).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
 
-  // Tabelleninhalt
-  const makeTable = (rows) => rows.length
-    ? rows.map(r => `
-      <tr>
-        ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
-        <td>${r.from}</td>
-        <td>${r.to}</td>
-        <td>${escapeHtml(r.note)}</td>
-      </tr>
-    `).join('')
-    : `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+  const calendarEl = renderAbsenceCalendar(rows);
 
-  const calendarEl = renderAbsenceCalendar(absRows);
-
-  // Wrapper erzeugen
   const wrapper = document.createElement('div');
   wrapper.style.marginTop = '16px';
   wrapper.innerHTML = `
@@ -1109,14 +1090,7 @@ async function renderAbsencePanel() {
     </div>
 
     <div id="absencesContent" style="display:none;margin-top:8px">
-      ${isAdmin ? `
-        <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
-          <label for="absenceUserFilter" style="font-weight:600">Benutzer:</label>
-          <select id="absenceUserFilter" class="small">${userOptions}</select>
-        </div>
-      ` : ''}
-
-      <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+      <div style="font-weight:600;margin-bottom:6px">${isAdmin ? 'Kommende Abwesenheiten' : 'Meine kommenden Abwesenheiten'}</div>
       <table style="width:100%;margin-bottom:14px">
         <thead>
           <tr>
@@ -1124,26 +1098,13 @@ async function renderAbsencePanel() {
             <th>Von</th><th>Bis</th><th>Notiz</th>
           </tr>
         </thead>
-        <tbody id="absenceTableBody">${makeTable(absRows)}</tbody>
+        <tbody>${tr}</tbody>
       </table>
 
       <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
-      <div id="calendarWrapper" style="margin-bottom:16px"></div>
-
-      ${isAdmin ? `
-      <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-bottom:14px">
-        ${users.map(u => `
-          <div style="background:var(--panel);padding:8px 10px;border-radius:8px;box-shadow:var(--shadow);font-size:0.85rem">
-            <div style="font-weight:600">${escapeHtml(u.displayName)}</div>
-            <div style="color:var(--muted)">${timeAgo(u.lastOnline)}</div>
-          </div>
-        `).join('')}
-      </div>` : ''}
     </div>
   `;
 
-  // Toggle-Funktion
   const toggle = wrapper.querySelector('#absencesToggle');
   toggle.addEventListener('click', () => {
     const cont = wrapper.querySelector('#absencesContent');
@@ -1152,28 +1113,7 @@ async function renderAbsencePanel() {
     toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
   });
 
-  // Kalender einfügen
-  const calWrapper = wrapper.querySelector('#calendarWrapper');
-  if (calWrapper) calWrapper.appendChild(calendarEl);
-
-  // 🔍 Filter-Event nur für Admin
-  if (isAdmin) {
-    const select = wrapper.querySelector('#absenceUserFilter');
-    if (select) {
-      select.addEventListener('change', (e) => {
-        const selected = e.target.value;
-        const filtered = selected === 'all'
-          ? absRows
-          : absRows.filter(r => r.username === selected);
-        wrapper.querySelector('#absenceTableBody').innerHTML = makeTable(filtered);
-        // Kalender neu rendern mit Filterdaten
-        const newCal = renderAbsenceCalendar(filtered);
-        calWrapper.innerHTML = '';
-        calWrapper.appendChild(newCal);
-      });
-    }
-  }
-
+  wrapper.querySelector('#absencesContent').appendChild(calendarEl);
   return wrapper;
 }
 
