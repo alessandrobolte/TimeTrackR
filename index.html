@@ -901,8 +901,16 @@ async function renderDashboard() {
     }
   }
 
-  // Begrüßung aktualisieren
-  document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
+// 🖐️ Persönliche Begrüßung mit Wochenübersicht (gesamt über alle Projekte)
+const totalMin = await getWeeklyTotalMinutes();
+const greetingEl = document.getElementById('greeting');
+
+if (totalMin > 0) {
+  greetingEl.textContent = `👋 Hallo ${user.displayName} — du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`;
+} else {
+  greetingEl.textContent = `👋 Hallo ${user.displayName} — noch keine erfassten Zeiten für Projekte in dieser Woche.`;
+}
+
 // 🧭 Dashboard-Typ anzeigen
 let dashSubtitle = document.getElementById('dashboardSubtitle');
 if (!dashSubtitle) {
@@ -1782,6 +1790,34 @@ function timeAgo(timestamp) {
   if (diffHr > 0) return `vor ${diffHr} Stunde${diffHr > 1 ? 'n' : ''}`;
   if (diffMin > 1) return `vor ${diffMin} Minuten`;
   return 'gerade eben';
+}
+// 🧮 Summiert alle Sessions dieser Woche (über alle Kategorien)
+async function getWeeklyTotalMinutes() {
+  const cats = await idbGetAll(DB, 'categories');
+  if (!cats) return 0;
+
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Montag
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  let total = 0;
+  for (const c of cats) {
+    for (const s of (c.sessions || [])) {
+      if (!s.timestamp) continue;
+      const t = new Date(s.timestamp);
+      if (t >= startOfWeek) total += s.durationMin || 0;
+    }
+  }
+  return total;
+}
+
+// 🕒 Formatiert Minuten in "Xh Ym"
+function formatMinutes(min) {
+  if (!min || min <= 0) return '0 h 0 min';
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return `${h} h ${m.toString().padStart(2,'0')} min`;
 }
 
     async function parseImportCSV(txt){
