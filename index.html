@@ -977,14 +977,28 @@ async function openAbsenceModal() {
 
   user.absences = user.absences || [];
 
-  const list = user.absences
-    .map((a, i) => `<tr>
-      <td>${a.from}</td>
-      <td>${a.to}</td>
-      <td>${escapeHtml(a.note || '')}</td>
-      <td><button class="small danger" data-idx="${i}">Löschen</button></td>
-    </tr>`)
-    .join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center">Keine Abwesenheiten</td></tr>`;
+  // 📅 Hilfsfunktion für Datumsformat mit Wochentag
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+const list = user.absences
+  .map((a, i) => `<tr>
+    <td>${formatDate(a.from)}</td>
+    <td>${formatDate(a.to)}</td>
+    <td>${escapeHtml(a.note || '')}</td>
+    <td><button class="small danger" data-idx="${i}">Löschen</button></td>
+  </tr>`)
+  .join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center">Keine Abwesenheiten</td></tr>`;
+
 
     const modal = openModal(`
   <h3>Meine Abwesenheiten 🗓️</h3>
