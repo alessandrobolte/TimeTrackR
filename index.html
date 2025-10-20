@@ -901,15 +901,22 @@ async function renderDashboard() {
     }
   }
 
-// 🖐️ Persönliche Begrüßung mit Wochenübersicht (gesamt über alle Projekte)
+// 🖐️ Persönliche Begrüßung mit Wochenübersicht (gestaltet)
 const totalMin = await getWeeklyTotalMinutes();
 const greetingEl = document.getElementById('greeting');
 
-if (totalMin > 0) {
-  greetingEl.textContent = `👋 Hallo ${user.displayName} — du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`;
-} else {
-  greetingEl.textContent = `👋 Hallo ${user.displayName} — noch keine erfassten Zeiten für Projekte in dieser Woche.`;
-}
+// Hauptzeile (Name)
+greetingEl.innerHTML = `
+  <div style="font-size:1.1rem; font-weight:600;">
+    👋 Hallo ${user.displayName}
+  </div>
+  <div style="font-size:0.9rem; color:var(--muted); margin-top:2px;">
+    ${totalMin > 0
+      ? `Du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`
+      : `Noch keine erfassten Zeiten für Projekte in dieser Woche.`}
+  </div>
+`;
+
 
 // 🧭 Dashboard-Typ anzeigen
 let dashSubtitle = document.getElementById('dashboardSubtitle');
