@@ -890,16 +890,16 @@ if (statsPanel) {
   // -----------------------------
   // Begrüßung + Dashboard-Unterzeile
   // -----------------------------
-  const greetingEl = document.getElementById('greeting');
-  greetingEl.innerHTML = `
-  <div style="
-    font-size:0.9rem;
-    color:var(--muted);
-    margin-top:-4px;
-    text-align:left;
-  ">
-    👋 Hallo ${user.displayName}
-  </div>`;
+//  const greetingEl = document.getElementById('greeting');
+//  greetingEl.innerHTML = `
+//  <div style="
+//    font-size:0.9rem;
+//   color:var(--muted);
+//    margin-top:-4px;
+//    text-align:left;
+//  ">
+//    👋 Hallo ${user.displayName}
+//  </div>`;
 
 
   let dashSubtitle = document.getElementById('dashboardSubtitle');
@@ -964,7 +964,24 @@ setTimeout(() => {
 }, 4000);
 
 
-
+// -----------------------------
+// 👋 Begrüßung oben rechts unter dem Ausloggen-Button
+// -----------------------------
+const greetingContainer = document.getElementById('greetingTop');
+if (!greetingContainer) {
+  const logoutBtn = document.querySelector('#logoutBtn') || document.querySelector('button[onclick*="logout"]');
+  if (logoutBtn && logoutBtn.parentElement) {
+    const greet = document.createElement('div');
+    greet.id = 'greetingTop';
+    greet.style.fontSize = '0.85rem';
+    greet.style.color = 'var(--muted)';
+    greet.style.marginTop = '2px';
+    greet.style.textAlign = 'right';
+    greet.style.whiteSpace = 'nowrap'; // ⬅️ Kein Zeilenumbruch
+    greet.textContent = `👋 Hallo ${user.displayName}`;
+    logoutBtn.parentElement.appendChild(greet);
+  }
+}
 
 }
 
