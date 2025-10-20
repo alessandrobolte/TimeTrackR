@@ -857,39 +857,39 @@ if (isAdmin) {
         </div>
       </div>
     `;
-
-    // Erst nach dem Einfügen Listener setzen
+    
+    // Füge den gesamten Panelblock zuerst ins DOM ein:
     catsPanel.appendChild(panel);
 
-    const adminHeader = catsPanel.querySelector('#adminHeader');
-    const adminContent = catsPanel.querySelector('#adminContent');
-    const adminToggle = catsPanel.querySelector('#adminToggle');
+    // 🔒 Jetzt Elemente innerhalb des Panels holen (lokal, nicht global)
+    const adminHeader = panel.querySelector('#adminHeader');
+    const adminContent = panel.querySelector('#adminContent');
+    const adminToggle = panel.querySelector('#adminToggle');
+    const viewBtn = panel.querySelector('#adminViewBtn');
+    const resetBtn = panel.querySelector('#resetUserPwBtn');
+    const addBtn = panel.querySelector('#addUserBtn');
+    const userSelect = panel.querySelector('#userSelect');
 
-    if (adminHeader && adminContent && adminToggle) {
-      adminHeader.addEventListener('click', () => {
-        const open = adminContent.style.display === 'block';
-        adminContent.style.display = open ? 'none' : 'block';
-        adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-      });
-    }
+    // 🧩 Toggle-Funktion sicher setzen
+    adminHeader.addEventListener('click', () => {
+      const open = adminContent.style.display === 'block';
+      adminContent.style.display = open ? 'none' : 'block';
+      adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    });
 
-    // Adminfunktionen verdrahten
-    const viewBtn = catsPanel.querySelector('#adminViewBtn');
-    const resetBtn = catsPanel.querySelector('#resetUserPwBtn');
-    const addBtn = catsPanel.querySelector('#addUserBtn');
-
-    if (viewBtn) viewBtn.addEventListener('click', showAdminView);
-    if (resetBtn) resetBtn.addEventListener('click', async () => {
-      const sel = catsPanel.querySelector('#userSelect');
-      const name = sel?.value;
+    // 🔗 Button-Events sicher verdrahten
+    viewBtn.addEventListener('click', showAdminView);
+    resetBtn.addEventListener('click', async () => {
+      const name = userSelect?.value;
       if (name) await resetUserPassword(name);
     });
-    if (addBtn) addBtn.addEventListener('click', addNewUser);
+    addBtn.addEventListener('click', addNewUser);
 
-    // Benutzerliste füllen
+    // 🧠 Benutzerliste füllen
     populateUserDropdown();
   }
 }
+
 
 }
 
