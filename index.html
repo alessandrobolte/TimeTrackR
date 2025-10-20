@@ -2203,7 +2203,7 @@ function drawLineChart(){
         const user = await idbGet(DB,'users',lastUser);
         if(user){
           STATE.currentUser = user.username;
-          document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
+          //document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
           document.getElementById('logoutBtn').style.display='inline-block';
           if(user.pwExpired){
             renderChangePassword(true);
