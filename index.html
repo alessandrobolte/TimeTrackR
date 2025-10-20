@@ -674,39 +674,52 @@ async function syncAbsencesFromCloud() {
         </div>
     
         <section class="stats-panel" id="statsPanel">
-         <div class="stats-header">
-  <div style="font-weight:700">Statistiken</div>
-  <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
-</div>
-
-<div id="statsContent" style="display:none;margin-top:10px">
-  <div id="rangeButtons" style="display:flex;gap:6px;margin-bottom:10px">
-    <button class="small" data-range="7">Letzte 7 Tage</button>
-    <button class="small" data-range="14">Letzte 14 Tage</button>
-    <button class="small" data-range="30">30 Tage</button>
-    <button class="small" data-range="all">Gesamt</button>
+  <div class="stats-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div id="statsTitle" style="font-weight:700">Statistiken</div>
+    <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
   </div>
 
-    
-          <div id="statsContent" style="display:none;margin-top:10px">
-            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-              <div style="flex:1;min-width:320px">
-                <table id="statsTable"><thead><tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr></thead><tbody></tbody></table>
-              </div>
-              <div style="width:420px"><canvas id="barChart" width="420" height="220" role="img"></canvas></div>
-            </div>
-    
-            <div style="margin-top:12px">
-              <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
-              <canvas id="lineChart" width="980" height="240" style="width:100%"></canvas>
-            </div>
-    
-            <div style="margin-top:12px">
-              <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
-              <div class="sessions-list"><table id="sessionsTable"><thead><tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th>${isAdmin ? '' : '<th>Aktion</th>'}</tr></thead><tbody></tbody></table></div>
-            </div>
-          </div>
-        </section>
+  <div id="statsContent" style="display:none;margin-top:10px">
+    <div id="rangeButtons" style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="small" data-range="7">Letzte 7 Tage</button>
+      <button class="small" data-range="14">Letzte 14 Tage</button>
+      <button class="small" data-range="30">30 Tage</button>
+      <button class="small" data-range="all">Gesamt</button>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:320px">
+        <table id="statsTable">
+          <thead>
+            <tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div style="width:420px">
+        <canvas id="barChart" width="420" height="220" role="img"></canvas>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
+      <canvas id="lineChart" width="980" height="240" style="width:100%"></canvas>
+    </div>
+
+    <div style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
+      <div class="sessions-list">
+        <table id="sessionsTable">
+          <thead>
+            <tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
       `;
     
       // wire up actions
@@ -917,7 +930,7 @@ async function renderAbsencePanel() {
   }
 
   // Kombiniere lokale + Cloud-Daten
-  const now = new Date().toISOString().slice(0,10);
+  const now = new Date().toISOString().slice(0, 10);
   const rows = [];
 
   for (const u of users) {
@@ -934,7 +947,7 @@ async function renderAbsencePanel() {
       }));
   }
 
-  rows.sort((a,b)=>a.from.localeCompare(b.from));
+  rows.sort((a, b) => a.from.localeCompare(b.from));
 
   const tr = rows.map(r =>
     `<tr>
@@ -958,41 +971,43 @@ async function renderAbsencePanel() {
   const wrapper = document.createElement('div');
   wrapper.style.marginTop = '16px';
   wrapper.innerHTML = `
-  <div class="stats-header">
-    <div style="font-weight:700">Abwesenheiten</div>
-    <div class="toggle-details" id="toggleAbsences">Ausklappen ▾</div>
-  </div>
-  <div id="absencesContent" style="display:none;margin-top:8px">
-    <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
-    <table style="width:100%;margin-bottom:14px">
-      <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
-      <tbody>${tr}</tbody>
-    </table>
+    <div class="stats-header" style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-weight:700">Abwesenheiten</div>
+      <div class="toggle-details" id="absencesToggle">Ausklappen ▾</div>
+    </div>
 
-    <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
-    <table style="width:100%;margin-bottom:14px">
-      <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
-      <tbody>${lastOnline}</tbody>
-    </table>
+    <div id="absencesContent" style="display:none;margin-top:8px">
+      <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+        <tbody>${tr}</tbody>
+      </table>
 
-    <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
-  </div>
-`;
+      <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
+        <tbody>${lastOnline}</tbody>
+      </table>
 
-// 🟢 Toggle-Funktion (muss NACH wrapper.innerHTML stehen!)
-const toggle = wrapper.querySelector('#toggleAbsences');
-toggle.addEventListener('click', () => {
-  const cont = wrapper.querySelector('#absencesContent');
-  const open = cont.style.display === 'block';
-  cont.style.display = open ? 'none' : 'block';
-  toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-});
+      <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
+    </div>
+  `;
 
-// 📅 Kalender-Element einfügen (bleibt wie zuvor)
-wrapper.querySelector('#absencesContent').appendChild(calendarEl);
+  // 🟢 Toggle-Funktion (korrektes Element!)
+  const toggle = wrapper.querySelector('#absencesToggle');
+  toggle.addEventListener('click', () => {
+    const cont = wrapper.querySelector('#absencesContent');
+    const open = cont.style.display === 'block';
+    cont.style.display = open ? 'none' : 'block';
+    toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+  });
+
+  // 📅 Kalender-Element einfügen
+  wrapper.querySelector('#absencesContent').appendChild(calendarEl);
 
   return wrapper;
 }
+
 
 
 // ---------------------------
