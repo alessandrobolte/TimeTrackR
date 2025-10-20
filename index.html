@@ -957,21 +957,31 @@ async function renderAbsencePanel() {
   const wrapper = document.createElement('div');
   wrapper.style.marginTop = '16px';
   wrapper.innerHTML = `
-    <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
-    <div id="absencesContent" style="display:none;margin-top:8px">
-      <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
-      <table style="width:100%;margin-bottom:14px">
-        <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
-        <tbody>${tr}</tbody>
-      </table>
-      <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
-      <table style="width:100%;margin-bottom:14px">
-        <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
-        <tbody>${lastOnline}</tbody>
-      </table>
-      <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
-    </div>
-  `;
+  <div class="stats-header">
+    <div style="font-weight:700">Abwesenheiten</div>
+    <div class="toggle-details" id="toggleAbsences">Ausklappen ▾</div>
+  </div>
+  <div id="absencesContent" style="display:none;margin-top:8px">
+    <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+    <table style="width:100%;margin-bottom:14px">
+      <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+      <tbody>${tr}</tbody>
+    </table>
+    <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
+    <table style="width:100%;margin-bottom:14px">
+      <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
+      <tbody>${lastOnline}</tbody>
+    </table>
+    <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
+  </div>
+`;
+const toggle = wrapper.querySelector('#toggleAbsences');
+toggle.addEventListener('click', () => {
+  const cont = wrapper.querySelector('#absencesContent');
+  const open = cont.style.display === 'block';
+  cont.style.display = open ? 'none' : 'block';
+  toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+});
 
   wrapper.querySelector('#absencesContent').appendChild(calendarEl);
   return wrapper;
