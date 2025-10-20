@@ -735,9 +735,7 @@ async function renderDashboard() {
     </section>
   `;
 
-  // -----------------------------
   // USER-spezifische Aktionen
-  // -----------------------------
   if (!isAdmin) {
     const addBtn = document.getElementById('addCategoryBtn');
     const delBtn = document.getElementById('delModeBtn');
@@ -764,9 +762,7 @@ async function renderDashboard() {
     });
   }
 
-  // -----------------------------
-  // Gemeinsame Aktionen (nur wenn vorhanden)
-  // -----------------------------
+  // Gemeinsame Aktionen
   const exportBtn = document.getElementById('exportBtn');
   const importBtn = document.getElementById('importBtn');
   const importFile = document.getElementById('importFile');
@@ -790,9 +786,7 @@ async function renderDashboard() {
     });
   }
 
-  // -----------------------------
   // Timer + Manuell + Abwesenheit
-  // -----------------------------
   document.getElementById('forgotBtn').addEventListener('click', openManualModal);
   document.getElementById('absenceBtn').addEventListener('click', openAbsenceModal);
   document.getElementById('startBtn').addEventListener('click', startTimer);
@@ -809,131 +803,59 @@ async function renderDashboard() {
     drawLineChart();
   });
 
-  // -----------------------------
-  // Kategorien + Stats rendern
-  // -----------------------------
+  // Kategorien + Stats
   await renderCategoryList();
   renderStats();
 
-// -----------------------------
-// Abwesenheiten-Panel (für Admins UND User)
-// -----------------------------
-const statsPanel = document.getElementById('statsPanel');
-if (statsPanel) {
-  const absPanel = await renderAbsencePanel();
-  statsPanel.appendChild(absPanel);
+  // -----------------------------
+  // Abwesenheiten-Panel (für Admins UND User)
+  // -----------------------------
+  const statsPanel = document.getElementById('statsPanel');
+  if (statsPanel) {
+    const absPanel = await renderAbsencePanel();
+    statsPanel.appendChild(absPanel);
 
-  const toggle = absPanel?.querySelector('#absencesToggle');
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      const cont = absPanel.querySelector('#absencesContent');
-      const open = cont.style.display === 'block';
-      cont.style.display = open ? 'none' : 'block';
-      toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-    });
-  }
-}
-
-// -----------------------------
-// Admin-spezifische Panels
-// -----------------------------
-if (isAdmin) {
-  // Adminpanel für Benutzerverwaltung
-  const catsPanel = document.querySelector('.cats-panel');
-  if (catsPanel) {
-    const panel = document.createElement('div');
-    panel.style.marginTop = '12px';
-    panel.innerHTML = `
-      <div id="adminHeader" style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        cursor:pointer;
-        background:var(--card-bg, var(--bg));
-        padding:6px 8px;
-        border-radius:8px;
-        border:1px solid var(--border);
-      ">
-        <div style="font-weight:600;color:var(--text)">Admin-Funktionen</div>
-        <div id="adminToggle" style="color:var(--muted)">Ausklappen ▾</div>
-      </div>
-
-      <div id="adminContent" style="
-        display:none;
-        margin-top:6px;
-        padding:8px;
-        background:var(--surface, var(--bg));
-        border:1px solid var(--border);
-        border-radius:8px;
-      ">
-        <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
-        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
-        <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
-          <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
-          <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
-        </div>
-      </div>
-    `;
-
-    catsPanel.appendChild(panel);
-
-    const adminHeader = panel.querySelector('#adminHeader');
-    const adminContent = panel.querySelector('#adminContent');
-    const adminToggle = panel.querySelector('#adminToggle');
-    const viewBtn = panel.querySelector('#adminViewBtn');
-    const resetBtn = panel.querySelector('#resetUserPwBtn');
-    const addBtn = panel.querySelector('#addUserBtn');
-    const userSelect = panel.querySelector('#userSelect');
-
-    if (adminHeader && adminContent && adminToggle) {
-      adminHeader.addEventListener('click', () => {
-        const open = adminContent.style.display === 'block';
-        adminContent.style.display = open ? 'none' : 'block';
-        adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    const toggle = absPanel?.querySelector('#absencesToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const cont = absPanel.querySelector('#absencesContent');
+        const open = cont.style.display === 'block';
+        cont.style.display = open ? 'none' : 'block';
+        toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
       });
     }
-    if (viewBtn) viewBtn.addEventListener('click', showAdminView);
-    if (resetBtn) resetBtn.addEventListener('click', async () => {
-      const name = userSelect?.value;
-      if (name) await resetUserPassword(name);
-    });
-    if (addBtn) addBtn.addEventListener('click', addNewUser);
-    if (typeof populateUserDropdown === 'function') populateUserDropdown();
   }
-}
 
-
-    // Adminpanel für Benutzerverwaltung
+  // -----------------------------
+  // Admin-spezifische Panels
+  // -----------------------------
+  if (isAdmin) {
     const catsPanel = document.querySelector('.cats-panel');
     if (catsPanel) {
       const panel = document.createElement('div');
       panel.style.marginTop = '12px';
       panel.innerHTML = `
-  <div id="adminHeader" style="
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    cursor:pointer;
-    background:var(--card-bg, var(--bg));
-    padding:6px 8px;
-    border-radius:8px;
-    border:1px solid var(--border);
-  ">
-    <div style="font-weight:600;color:var(--text)">Admin-Funktionen</div>
-    <div id="adminToggle" style="color:var(--muted)">Ausklappen ▾</div>
-  </div>
-
-  <div id="adminContent" style="
-    display:none;
-    margin-top:6px;
-    padding:8px;
-    background:var(--surface, var(--bg));
-    border:1px solid var(--border);
-    border-radius:8px;
-  ">
-
+        <div id="adminHeader" style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          cursor:pointer;
+          background:var(--card-bg, var(--bg));
+          padding:6px 8px;
+          border-radius:8px;
+          border:1px solid var(--border);
+        ">
+          <div style="font-weight:600;color:var(--text)">Admin-Funktionen</div>
+          <div id="adminToggle" style="color:var(--muted)">Ausklappen ▾</div>
+        </div>
+        <div id="adminContent" style="
+          display:none;
+          margin-top:6px;
+          padding:8px;
+          background:var(--surface, var(--bg));
+          border:1px solid var(--border);
+          border-radius:8px;
+        ">
           <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
           <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
           <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
@@ -944,7 +866,6 @@ if (isAdmin) {
           </div>
         </div>
       `;
-
       catsPanel.appendChild(panel);
 
       const adminHeader = panel.querySelector('#adminHeader');
@@ -971,6 +892,46 @@ if (isAdmin) {
       if (typeof populateUserDropdown === 'function') populateUserDropdown();
     }
   }
+
+  // -----------------------------
+  // Begrüßung + Dashboard-Unterzeile
+  // -----------------------------
+  const totalMin = await getWeeklyTotalMinutes();
+  const greetingEl = document.getElementById('greeting');
+
+  greetingEl.innerHTML = `
+    <div style="font-size:1.1rem;font-weight:600;">
+      👋 Hallo ${user.displayName}
+    </div>
+    <div style="font-size:0.9rem;color:var(--muted);margin-top:2px;">
+      ${totalMin > 0
+        ? `Du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`
+        : `Noch keine erfassten Zeiten für Projekte in dieser Woche.`}
+    </div>
+  `;
+
+  let dashSubtitle = document.getElementById('dashboardSubtitle');
+  if (!dashSubtitle) {
+    dashSubtitle = document.createElement('div');
+    dashSubtitle.id = 'dashboardSubtitle';
+    dashSubtitle.style.fontSize = '1.1rem';
+    dashSubtitle.style.color = 'var(--muted)';
+    dashSubtitle.style.margin = '4px 0 12px 4px';
+    dashSubtitle.style.fontWeight = '500';
+    dashSubtitle.style.textAlign = 'left';
+
+    const h1 = document.querySelector('h1');
+    if (h1 && h1.parentElement) {
+      h1.insertAdjacentElement('afterend', dashSubtitle);
+    } else {
+      const main = document.getElementById('mainContent');
+      if (main) main.prepend(dashSubtitle);
+    }
+  }
+
+  dashSubtitle.textContent = isAdmin ? '🧑‍💼 Admin-Dashboard' : '👤 User-Dashboard';
+}
+
 
 // 🖐️ Persönliche Begrüßung mit Wochenübersicht (gestaltet)
 const totalMin = await getWeeklyTotalMinutes();
