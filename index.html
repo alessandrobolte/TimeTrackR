@@ -977,11 +977,11 @@ async function renderAbsencePanel() {
   return wrapper;
 }
 
+
 // ---------------------------
-// Monatskalender mit Navigation (Admin)
+// Monatskalender mit Hover + Klick auf Abwesenheiten (Admin)
 // ---------------------------
 function renderAbsenceCalendar(absences) {
-  // Wrapper erzeugen
   const container = document.createElement('div');
   container.className = 'absence-calendar';
   container.dataset.year = new Date().getFullYear();
@@ -1001,7 +1001,7 @@ function renderAbsenceCalendar(absences) {
       for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
         const key = d.toISOString().slice(0, 10);
         if (!map[key]) map[key] = [];
-        map[key].push(a.name);
+        map[key].push(a);
       }
     });
 
@@ -1012,7 +1012,6 @@ function renderAbsenceCalendar(absences) {
     const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     const startOffset = (firstDay.getDay() + 6) % 7;
 
-    // Header mit Navigation
     let html = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <button id="prevMonth" class="small ghost">←</button>
@@ -1030,21 +1029,25 @@ function renderAbsenceCalendar(absences) {
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d);
       const dateStr = date.toISOString().slice(0, 10);
-      const names = map[dateStr];
-      const hasAbs = !!names;
+      const entries = map[dateStr];
+      const hasAbs = !!entries;
       const bg = hasAbs ? 'rgba(255,99,71,0.15)' : 'var(--panel)';
       const border = hasAbs
         ? '1px solid rgba(255,99,71,0.4)'
         : '1px solid rgba(0,0,0,0.05)';
-      const tooltip = hasAbs ? names.join(', ') : '';
+      const tooltip = hasAbs
+        ? entries.map(e => `${e.name}${e.note ? ` (${e.note})` : ''}`).join(', ')
+        : '';
       const highlight =
         date.toDateString() === today.toDateString()
           ? 'outline:1px solid var(--accent2);'
           : '';
 
       html += `
-        <div title="${escapeHtml(tooltip)}"
-             style="background:${bg};border:${border};border-radius:8px;padding:6px;min-height:36px;position:relative;${highlight}">
+        <div class="calendar-day" 
+             data-date="${dateStr}"
+             title="${escapeHtml(tooltip)}"
+             style="background:${bg};border:${border};border-radius:8px;padding:6px;min-height:36px;position:relative;cursor:${hasAbs ? 'pointer' : 'default'};${highlight}">
           <div style="font-size:0.9rem">${d}</div>
           ${
             hasAbs
@@ -1075,6 +1078,33 @@ function renderAbsenceCalendar(absences) {
       container.dataset.month = m;
       drawCalendar(y, m);
     };
+
+    // Klick auf Tag mit Abwesenheiten → Modal öffnen
+    container.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+      el.addEventListener('click', () => {
+        const dateStr = el.dataset.date;
+        const list = map[dateStr];
+        if (!list || list.length === 0) return;
+
+        const details = list
+          .map(a => `
+            <tr>
+              <td>${escapeHtml(a.name)}</td>
+              <td>${a.from}</td>
+              <td>${a.to}</td>
+              <td>${escapeHtml(a.note || '')}</td>
+            </tr>`)
+          .join('');
+
+        openModal(`
+          <h3>Abwesenheiten am ${dateStr}</h3>
+          <table style="width:100%;margin-top:8px">
+            <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+            <tbody>${details}</tbody>
+          </table>
+        `);
+      });
+    });
   }
 
   drawCalendar(
@@ -1084,6 +1114,7 @@ function renderAbsenceCalendar(absences) {
 
   return container;
 }
+
 
 
 
