@@ -823,23 +823,35 @@ async function syncAbsencesFromCloud() {
   const catsPanel = document.querySelector('.cats-panel');
   if (catsPanel) {
     const panel = document.createElement('div');
-    panel.style.marginTop = '16px';
-    panel.style.background = 'var(--panel)';
-    panel.style.padding = '12px';
-    panel.style.borderRadius = '10px';
-    panel.style.boxShadow = 'var(--shadow)';
+    panel.style.marginTop = '12px';
     panel.innerHTML = `
-      <div style="font-size:0.9rem;color:var(--muted);font-weight:600;">Admin-Funktionen</div>
-      <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
-      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
-      <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
-        <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
-        <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+      <div id="adminHeader" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#f2f2f2;padding:6px 8px;border-radius:8px;">
+        <div style="font-weight:600;color:#333">Admin-Funktionen</div>
+        <div id="adminToggle" style="color:#555">Ausklappen ▾</div>
+      </div>
+      <div id="adminContent" style="display:none;margin-top:6px;padding:8px;background:#f9f9f9;border-radius:8px">
+        <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+        <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+          <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+          <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+        </div>
       </div>
     `;
     catsPanel.appendChild(panel);
+
+    // 🧩 Toggle-Funktion
+    const adminHeader = panel.querySelector('#adminHeader');
+    const adminContent = panel.querySelector('#adminContent');
+    const adminToggle = panel.querySelector('#adminToggle');
+    adminHeader.addEventListener('click', () => {
+      const open = adminContent.style.display === 'block';
+      adminContent.style.display = open ? 'none' : 'block';
+      adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    });
+
 
 
       document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
