@@ -334,6 +334,10 @@ async function init() {
     // Login Flow (client-side login for demo)
     // ---------------------------
     async function renderLogin(){
+      // Begrüßung beim Login-Bildschirm ausblenden
+const greetingEl = document.getElementById('greeting');
+if (greetingEl) greetingEl.style.display = 'none';
+
       const main = document.getElementById('mainContent');
       main.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
@@ -629,6 +633,10 @@ async function syncAbsencesFromCloud() {
 async function renderDashboard() {
   await syncFromCloud();
   await syncAbsencesFromCloud();
+  // Begrüßung wieder einblenden, wenn Dashboard geladen wird
+const greetingEl = document.getElementById('greeting');
+if (greetingEl) greetingEl.style.display = 'block';
+
 
   const user = await idbGet(DB, 'users', STATE.currentUser);
   if (!user) return renderLogin();
