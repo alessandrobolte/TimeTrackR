@@ -818,18 +818,35 @@ async function syncAbsencesFromCloud() {
   // Begrüßung
   document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
 
-  // Adminpanel Benutzerverwaltung
-  if (isAdmin) {
+// ---------------------------
+// Adminpanel mit Userverwaltung (einklappbar + sicherer Listener)
+// ---------------------------
+if (isAdmin) {
   const catsPanel = document.querySelector('.cats-panel');
   if (catsPanel) {
     const panel = document.createElement('div');
     panel.style.marginTop = '12px';
     panel.innerHTML = `
-      <div id="adminHeader" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#f2f2f2;padding:6px 8px;border-radius:8px;">
+      <div id="adminHeader" style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        cursor:pointer;
+        background:#f2f2f2;
+        padding:6px 8px;
+        border-radius:8px;
+      ">
         <div style="font-weight:600;color:#333">Admin-Funktionen</div>
         <div id="adminToggle" style="color:#555">Ausklappen ▾</div>
       </div>
-      <div id="adminContent" style="display:none;margin-top:6px;padding:8px;background:#f9f9f9;border-radius:8px">
+
+      <div id="adminContent" style="
+        display:none;
+        margin-top:6px;
+        padding:8px;
+        background:#f9f9f9;
+        border-radius:8px;
+      ">
         <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
         <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
         <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
@@ -840,30 +857,40 @@ async function syncAbsencesFromCloud() {
         </div>
       </div>
     `;
+
+    // Erst nach dem Einfügen Listener setzen
     catsPanel.appendChild(panel);
 
-    // 🧩 Toggle-Funktion
-    const adminHeader = panel.querySelector('#adminHeader');
-    const adminContent = panel.querySelector('#adminContent');
-    const adminToggle = panel.querySelector('#adminToggle');
-    adminHeader.addEventListener('click', () => {
-      const open = adminContent.style.display === 'block';
-      adminContent.style.display = open ? 'none' : 'block';
-      adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
-    });
+    const adminHeader = catsPanel.querySelector('#adminHeader');
+    const adminContent = catsPanel.querySelector('#adminContent');
+    const adminToggle = catsPanel.querySelector('#adminToggle');
 
-
-
-      document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
-      document.getElementById('resetUserPwBtn').addEventListener('click', async () => {
-        const sel = document.getElementById('userSelect');
-        const name = sel.value;
-        if (name) await resetUserPassword(name);
+    if (adminHeader && adminContent && adminToggle) {
+      adminHeader.addEventListener('click', () => {
+        const open = adminContent.style.display === 'block';
+        adminContent.style.display = open ? 'none' : 'block';
+        adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
       });
-      document.getElementById('addUserBtn').addEventListener('click', addNewUser);
-      populateUserDropdown();
     }
+
+    // Adminfunktionen verdrahten
+    const viewBtn = catsPanel.querySelector('#adminViewBtn');
+    const resetBtn = catsPanel.querySelector('#resetUserPwBtn');
+    const addBtn = catsPanel.querySelector('#addUserBtn');
+
+    if (viewBtn) viewBtn.addEventListener('click', showAdminView);
+    if (resetBtn) resetBtn.addEventListener('click', async () => {
+      const sel = catsPanel.querySelector('#userSelect');
+      const name = sel?.value;
+      if (name) await resetUserPassword(name);
+    });
+    if (addBtn) addBtn.addEventListener('click', addNewUser);
+
+    // Benutzerliste füllen
+    populateUserDropdown();
   }
+}
+
 }
 
     
