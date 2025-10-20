@@ -2560,7 +2560,7 @@ async function autoSyncToCloud() {
     if (!STATE.currentUser) return;
 
     // Alle beendeten Sessions laden
-    const allSessions = await idbGetAll(DB, 'sessions');
+    const allSessions = await idbGetAll(DB, 'categories');
     const userSessions = allSessions.filter(s => !!s.category && !!s.durationMin);
 
     // Sessions gruppieren nach Benutzername
