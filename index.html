@@ -891,11 +891,15 @@ if (statsPanel) {
   // Begrüßung + Dashboard-Unterzeile
   // -----------------------------
   const greetingEl = document.getElementById('greeting');
-greetingEl.innerHTML = `
-  <div style="font-size:1.1rem;font-weight:600;">
+  greetingEl.innerHTML = `
+  <div style="
+    font-size:0.9rem;
+    color:var(--muted);
+    margin-top:-4px;
+    text-align:left;
+  ">
     👋 Hallo ${user.displayName}
-  </div>
-`;
+  </div>`;
 
 
   let dashSubtitle = document.getElementById('dashboardSubtitle');
