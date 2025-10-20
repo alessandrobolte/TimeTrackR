@@ -653,11 +653,10 @@ async function syncAbsencesFromCloud() {
           <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
         </div>
         <div class="centered" style="margin-top:10px">
-          <button id="forgotBtn" class="accent">Zeit stoppen vergessen?</button>
+          <button id="forgotBtn" class="accent">Zeiten manuell nachtragen</button>
         </div>
-        <div class="centered" style="margin-top:6px">
-          <button id="absenceBtn" class="small ghost">Meine Abwesenheiten</button>
-        </div>
+       <div class="centered" style="margin-top:6px"><button id="absenceBtn" class="accent small">Meine Abwesenheiten</button></div>
+
       </section>
 
       <aside class="timer-panel" aria-label="Timer Panel">
@@ -809,6 +808,7 @@ async function syncAbsencesFromCloud() {
   }
 }
 
+
     }
   }
 
@@ -817,22 +817,27 @@ async function syncAbsencesFromCloud() {
 
   // Adminpanel Benutzerverwaltung
   if (isAdmin) {
-    const catsPanel = document.querySelector('.cats-panel');
-    if (catsPanel) {
-      const panel = document.createElement('div');
-      panel.style.marginTop = '12px';
-      panel.innerHTML = `
-        <div style="font-size:0.9rem;color:var(--muted)">Admin-Funktionen:</div>
-        <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
-        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
-        <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
-          <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
-          <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
-        </div>
-      `;
-      catsPanel.appendChild(panel);
+  const catsPanel = document.querySelector('.cats-panel');
+  if (catsPanel) {
+    const panel = document.createElement('div');
+    panel.style.marginTop = '16px';
+    panel.style.background = 'var(--panel)';
+    panel.style.padding = '12px';
+    panel.style.borderRadius = '10px';
+    panel.style.boxShadow = 'var(--shadow)';
+    panel.innerHTML = `
+      <div style="font-size:0.9rem;color:var(--muted);font-weight:600;">Admin-Funktionen</div>
+      <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+      <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+        <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+        <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+      </div>
+    `;
+    catsPanel.appendChild(panel);
+
 
       document.getElementById('adminViewBtn').addEventListener('click', () => showAdminView());
       document.getElementById('resetUserPwBtn').addEventListener('click', async () => {
