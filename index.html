@@ -711,14 +711,14 @@ async function syncFromCloud() {
     const absPanel = await renderAbsencePanel();
 statsPanel.appendChild(absPanel);
 
+const toggle = absPanel.querySelector('#toggleAbsences');
+toggle.addEventListener('click', () => {
+  const cont = absPanel.querySelector('#absencesContent');
+  const open = cont.style.display === 'block';
+  cont.style.display = open ? 'none' : 'block';
+  toggle.textContent = open ? 'Abwesenheiten ▾' : 'Abwesenheiten ▴';
+});
 
-    const toggle = div.querySelector('#toggleAbsences');
-    toggle.addEventListener('click', () => {
-      const cont = div.querySelector('#absencesContent');
-      const open = cont.style.display === 'block';
-      cont.style.display = open ? 'none' : 'block';
-      toggle.textContent = open ? 'Abwesenheiten ▾' : 'Abwesenheiten ▴';
-    });
   }
 }
 
