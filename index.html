@@ -967,14 +967,18 @@ async function renderAbsencePanel() {
       <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
       <tbody>${tr}</tbody>
     </table>
+
     <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
     <table style="width:100%;margin-bottom:14px">
       <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
       <tbody>${lastOnline}</tbody>
     </table>
+
     <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
   </div>
 `;
+
+// 🟢 Toggle-Funktion (muss NACH wrapper.innerHTML stehen!)
 const toggle = wrapper.querySelector('#toggleAbsences');
 toggle.addEventListener('click', () => {
   const cont = wrapper.querySelector('#absencesContent');
@@ -983,7 +987,9 @@ toggle.addEventListener('click', () => {
   toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
 });
 
-  wrapper.querySelector('#absencesContent').appendChild(calendarEl);
+// 📅 Kalender-Element einfügen (bleibt wie zuvor)
+wrapper.querySelector('#absencesContent').appendChild(calendarEl);
+
   return wrapper;
 }
 
