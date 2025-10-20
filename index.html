@@ -801,104 +801,132 @@ try {
     // ---------------------------
     // Category details (visibility-safe)
     // ---------------------------
-    async function showCategoryDetails(id){
-      const user = await idbGet(DB,'users',STATE.currentUser);
-      const isAdmin = user.role==='Administrator';
-      const c = await idbGet(DB,'categories',id); if(!c) return;
-    
-      // Sichtbarkeit prüfen:
-      if (isAdmin) {
-  // 🔸 Admin darf nur LemGOesHANA ansehen
-  if (!c.system || c.name !== NON_DELETABLE_CATEGORY_NAME) {
-    alert('Admin darf nur LemGOesHANA ansehen.');
-    return;
+    async function showCategoryDetails(id) {
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  const isAdmin = user.role === 'Administrator';
+  const c = await idbGet(DB, 'categories', id);
+  if (!c) return;
+
+  // 🔒 Sichtbarkeit prüfen
+  if (isAdmin) {
+    // Admin darf nur LemGOesHANA ansehen
+    if (!c.system || c.name !== NON_DELETABLE_CATEGORY_NAME) {
+      alert('Admin darf nur LemGOesHANA ansehen.');
+      return;
+    }
+  } else {
+    // User darf eigene Kategorien und eigene Sessions in LemGOesHANA sehen
+    const isOwn = c.owner === STATE.currentUser;
+    const isLemGO = c.system && c.name === NON_DELETABLE_CATEGORY_NAME;
+    if (!isOwn && !isLemGO) {
+      alert('Nicht berechtigt.');
+      return;
+    }
   }
-} else {
-  // 🔹 User darf eigene Kategorien und eigene Sessions in LemGOesHANA sehen
-  const isOwn = c.owner === STATE.currentUser;
-  const isLemGO = c.system && c.name === NON_DELETABLE_CATEGORY_NAME;
-  if (!isOwn && !isLemGO) {
-    alert('Nicht berechtigt.');
-    return;
+
+  // 🔢 Sessions + Usernamen vorbereiten
+  const sessions = await filterSessionsForViewer(c, c.sessions || []);
+  const allUsers = await idbGetAll(DB, 'users');
+  const userMap = {};
+  for (const u of allUsers) userMap[u.username] = u.displayName;
+
+  const rows = sessions
+    .map(
+      (s, idx) => `
+      <tr>
+        <td>${escapeHtml(userMap[s.username] || s.username)}</td>
+        <td>${minutesToHuman(s.durationMin || 0)}</td>
+        <td contenteditable="${isAdmin ? 'false' : 'true'}" data-idx="${idx}">
+          ${escapeHtml(s.note || '')}
+        </td>
+        ${isAdmin ? '' : `<td><button data-idx="${idx}" class="small">Löschen</button></td>`}
+      </tr>`
+    )
+    .join('');
+
+  const modal = openModal(`
+    <h3>Details — ${escapeHtml(c.name)}</h3>
+    <div style="max-height:320px;overflow:auto;margin-top:8px">
+      <table style='width:100%'>
+        <thead>
+          <tr>
+            <th>Benutzer</th><th>Dauer</th><th>Notiz</th>${isAdmin ? '' : '<th>Aktion</th>'}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-top:6px">
+      ${
+        isAdmin
+          ? 'Admin-Ansicht: nur LemGOesHANA, alle Sessions sichtbar.'
+          : 'Notizen sind editierbar. Eigene Sessions kannst du löschen.'
+      }
+    </div>
+  `);
+
+  // 📝 Notizen editieren
+  if (!isAdmin) {
+    modal.querySelectorAll('td[contenteditable="true"]').forEach(td => {
+      td.addEventListener('blur', async () => {
+        const idx = parseInt(td.dataset.idx, 10);
+        const visible = await filterSessionsForViewer(c, c.sessions || []);
+        const sVisible = visible[idx];
+        if (!sVisible) return;
+        const realIdx = (c.sessions || []).findIndex(r => r.id === sVisible.id);
+        if (realIdx >= 0) {
+          c.sessions[realIdx].note = td.textContent.trim();
+          await idbPut(DB, 'categories', c);
+        }
+      });
+    });
+
+    // ❌ Eigene Sessions löschen (lokal + Cloud)
+    modal.querySelectorAll('button.small').forEach(b => {
+      b.addEventListener('click', async () => {
+        const idx = parseInt(b.dataset.idx, 10);
+        const visible = await filterSessionsForViewer(c, c.sessions || []);
+        const sVisible = visible[idx];
+        if (!sVisible) return;
+
+        if (sVisible.username !== STATE.currentUser) {
+          alert('Du kannst nur eigene Sessions löschen.');
+          return;
+        }
+
+        if (!confirm('Session wirklich löschen?')) return;
+
+        // 🔧 ID-basiertes Löschen
+        const cat = await idbGet(DB, 'categories', c.id);
+        if (!cat || !cat.sessions) return;
+
+        cat.sessions = cat.sessions.filter(s => s.id !== sVisible.id);
+        await idbPut(DB, 'categories', cat);
+
+        // 🌩️ Cloudflare-Sync: Session aus KV löschen
+        try {
+          await fetch('https://timetrackr.alessandrobolte.workers.dev/api/deleteSession', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: STATE.currentUser,
+              id: sVisible.id
+            })
+          });
+          console.log('🗑️ Session auch in Cloud gelöscht');
+        } catch (err) {
+          console.warn('⚠️ Cloud-Delete fehlgeschlagen:', err);
+        }
+
+        // 🔁 UI aktualisieren
+        showToast('Session gelöscht');
+        closeModal();
+        renderDashboard();
+      });
+    });
   }
 }
 
-    
-      const sessions = await filterSessionsForViewer(c, c.sessions||[]);
-      const allUsers = await idbGetAll(DB, 'users');
-const userMap = {};
-for (const u of allUsers) userMap[u.username] = u.displayName;
-
-const rows = sessions.map((s, idx) => `
-  <tr>
-    <td>${escapeHtml(userMap[s.username] || s.username)}</td>
-    <td>${minutesToHuman(s.durationMin || 0)}</td>
-    <td contenteditable="${isAdmin ? 'false' : 'true'}" data-idx="${idx}">${escapeHtml(s.note || '')}</td>
-    ${isAdmin ? '' : `<td><button data-idx="${idx}" class="small">Löschen</button></td>`}
-  </tr>`
-).join('');
-
-    
-      const modal = openModal(
-        `<h3>Details — ${escapeHtml(c.name)}</h3>
-         <div style="max-height:320px;overflow:auto;margin-top:8px">
-           <table style='width:100%'><thead>
-             <tr><th>Benutzer</th><th>Dauer</th><th>Notiz</th>${isAdmin? '' : '<th>Aktion</th>'}</tr>
-           </thead><tbody>${rows}</tbody></table>
-         </div>
-         <div style="font-size:0.8rem;color:var(--muted);margin-top:6px">
-           ${isAdmin? 'Admin-Ansicht: nur LemGOesHANA, alle Sessions sichtbar.' : 'Notizen sind editierbar. Eigene Sessions kannst du löschen.'}
-         </div>`
-      );
-    
-      if(!isAdmin){
-        // Note edit
-        modal.querySelectorAll('td[contenteditable="true"]').forEach(td=>{
-          td.addEventListener('blur', async e=>{
-            const idx = parseInt(td.dataset.idx,10);
-            const visible = await filterSessionsForViewer(c, c.sessions||[]);
-            const sVisible = visible[idx];
-            if(!sVisible) return;
-            // finde echte Session im Original-Array
-            const realIdx = (c.sessions||[]).findIndex(r => r.id===sVisible.id);
-            if(realIdx>=0){
-              c.sessions[realIdx].note = td.textContent.trim();
-              await idbPut(DB,'categories',c);
-            }
-          });
-        });
-// Delete own sessions only
-modal.querySelectorAll('button.small').forEach(b => {
-  b.addEventListener('click', async () => {
-    const idx = parseInt(b.dataset.idx, 10);
-    const visible = await filterSessionsForViewer(c, c.sessions || []);
-    const sVisible = visible[idx];
-    if (!sVisible) return;
-
-    // Nur eigene Sessions
-    if (sVisible.username !== STATE.currentUser) {
-      alert('Du kannst nur eigene Sessions löschen.');
-      return;
-    }
-
-    if (!confirm('Session wirklich löschen?')) return;
-
-    // 🔧 Eindeutig über ID löschen (nicht über Index)
-    const cat = await idbGet(DB, 'categories', c.id);
-    if (!cat || !cat.sessions) return;
-
-    cat.sessions = cat.sessions.filter(s => s.id !== sVisible.id);
-    await idbPut(DB, 'categories', cat);
-
-    // 🔥 Cloud-Sync NICHT sofort triggern, um Wiederherstellung zu vermeiden
-    showToast('Session gelöscht');
-    closeModal();
-    renderDashboard();
-  });
-});
-
-      }
-    }
     
     // ---------------------------
     // Admin view (keine separate UI mehr nötig – Details nutzt Regeln)
