@@ -903,21 +903,29 @@ async function renderDashboard() {
 
   // Begrüßung aktualisieren
   document.getElementById('greeting').textContent = 'Hallo ' + user.displayName;
-  // 🧭 Dashboard-Typ anzeigen
+// 🧭 Dashboard-Typ anzeigen
 let dashSubtitle = document.getElementById('dashboardSubtitle');
 if (!dashSubtitle) {
   dashSubtitle = document.createElement('div');
   dashSubtitle.id = 'dashboardSubtitle';
   dashSubtitle.style.fontSize = '1.1rem';
   dashSubtitle.style.color = 'var(--muted)';
-  dashSubtitle.style.marginBottom = '10px';
-  const header = document.querySelector('header h1'); // dein TimeTrackR-Titel
-  if (header && header.parentElement) {
-    header.parentElement.insertBefore(dashSubtitle, header.nextSibling);
+  dashSubtitle.style.margin = '4px 0 12px 0';
+  dashSubtitle.style.textAlign = 'center';
+  dashSubtitle.style.fontWeight = '500';
+
+  // 🔹 Füge es direkt NACH der Hauptüberschrift ein
+  const h1 = document.querySelector('h1');
+  if (h1 && h1.parentElement) {
+    h1.insertAdjacentElement('afterend', dashSubtitle);
+  } else {
+    // Fallback: oben ins mainContent
+    const main = document.getElementById('mainContent');
+    if (main) main.prepend(dashSubtitle);
   }
 }
 
-// 🔍 Text je nach Rolle
+// 🔍 Text je nach Rolle setzen
 dashSubtitle.textContent = isAdmin ? '🧑‍💼 Admin-Dashboard' : '👤 User-Dashboard';
 }
 
