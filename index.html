@@ -933,47 +933,7 @@ if (statsPanel) {
 
 
 
-// 🖐️ Persönliche Begrüßung mit Wochenübersicht (gestaltet)
-const totalMin = await getWeeklyTotalMinutes();
-const greetingEl = document.getElementById('greeting');
 
-// Hauptzeile (Name)
-greetingEl.innerHTML = `
-  <div style="font-size:1.1rem; font-weight:600;">
-    👋 Hallo ${user.displayName}
-  </div>
-  <div style="font-size:0.9rem; color:var(--muted); margin-top:2px;">
-    ${totalMin > 0
-      ? `Du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`
-      : `Noch keine erfassten Zeiten für Projekte in dieser Woche.`}
-  </div>
-`;
-
-
-// 🧭 Dashboard-Typ anzeigen
-let dashSubtitle = document.getElementById('dashboardSubtitle');
-if (!dashSubtitle) {
-  dashSubtitle = document.createElement('div');
-  dashSubtitle.id = 'dashboardSubtitle';
-  dashSubtitle.style.fontSize = '1.1rem';
-  dashSubtitle.style.color = 'var(--muted)';
-  dashSubtitle.style.margin = '4px 0 12px 4px'; // leicht eingerückt
-  dashSubtitle.style.fontWeight = '500';
-  dashSubtitle.style.textAlign = 'left'; // bündig mit TimeTrackR
-
-  // 🔹 direkt unter der Hauptüberschrift einfügen
-  const h1 = document.querySelector('h1');
-  if (h1 && h1.parentElement) {
-    h1.insertAdjacentElement('afterend', dashSubtitle);
-  } else {
-    // Fallback, falls kein h1 gefunden wird
-    const main = document.getElementById('mainContent');
-    if (main) main.prepend(dashSubtitle);
-  }
-}
-
-// 🔍 Text je nach Rolle
-dashSubtitle.textContent = isAdmin ? '🧑‍💼 Admin-Dashboard' : '👤 User-Dashboard';
 
 }
 
