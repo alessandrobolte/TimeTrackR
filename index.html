@@ -964,9 +964,7 @@ setTimeout(() => {
 }, 4000);
 
 
-// -----------------------------
 // 👋 Begrüßung direkt unter dem Theme-/Logout-Bereich (innerhalb der App!)
-// -----------------------------
 const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
   const topRight = logoutBtn.parentElement; // enthält Theme + Logout
@@ -977,15 +975,18 @@ if (logoutBtn) {
     greet.id = 'greetingTop';
     greet.style.fontSize = '0.8rem';
     greet.style.color = 'var(--muted)';
-    greet.style.marginTop = '4px';
+    greet.style.marginTop = '6px';            // etwas mehr Abstand
     greet.style.textAlign = 'right';
     greet.style.whiteSpace = 'nowrap';
     greet.textContent = `👋 Hallo ${user.displayName}`;
 
-    // in denselben Container einfügen, aber unterhalb der Buttons
-    topRight.appendChild(greet);
+    // 🔧 Änderung hier:
+    // Statt topRight.appendChild(greet)
+    // fügen wir es nach dem Logout-Button ein:
+    logoutBtn.insertAdjacentElement('afterend', greet);
   }
 }
+
 
 
 
