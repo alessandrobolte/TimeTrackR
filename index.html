@@ -585,12 +585,50 @@ async function syncFromCloud() {
     console.warn("⚠️ Cloud-Sync fehlgeschlagen:", err);
   }
 }
+// ---------------------------
+// Cloud-Sync: Abwesenheiten (globaler Abgleich)
+// ---------------------------
+async function syncAbsencesFromCloud() {
+  if (!STATE.currentUser || !DB) return;
+  const currentUser = await idbGet(DB, "users", STATE.currentUser);
+  if (!currentUser) return;
+
+  const isAdmin = currentUser.role === "Administrator";
+  try {
+    // Admin lädt alle, User nur eigene Abwesenheiten
+    const url = isAdmin
+      ? "https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=all"
+      : `https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=${encodeURIComponent(currentUser.username)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+
+    if (isAdmin) {
+      // Admin: alle Benutzer in DB aktualisieren
+      const users = await idbGetAll(DB, "users");
+      for (const u of users) {
+        const abs = data[u.username] || [];
+        u.absences = abs;
+        await idbPut(DB, "users", u);
+      }
+      console.log("☁️ Admin: Alle Abwesenheiten synchronisiert");
+    } else {
+      // User: nur eigene Abwesenheiten
+      currentUser.absences = data || [];
+      await idbPut(DB, "users", currentUser);
+      console.log("☁️ Abwesenheiten für", currentUser.username, "synchronisiert");
+    }
+  } catch (err) {
+    console.warn("⚠️ syncAbsencesFromCloud fehlgeschlagen:", err);
+  }
+}
 
     // ---------------------------
     // Dashboard (User + Admin variations)
     // ---------------------------
     async function renderDashboard(){
       await syncFromCloud();
+      await syncAbsencesFromCloud();
       const user = await idbGet(DB,'users',STATE.currentUser);
       if(!user) return renderLogin();
       const isAdmin = user.role === 'Administrator';
