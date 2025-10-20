@@ -394,6 +394,10 @@ async function init() {
       document.getElementById('greeting').textContent = 'Hallo ' + local.displayName + ' 👋';
       document.getElementById('logoutBtn').style.display = 'inline-block';
       setLoading(false);
+      // 🕒 "Zuletzt online" speichern (Cloud-User)
+local.lastOnline = Date.now();
+await idbPut(DB, 'users', local);
+
 
       const gm = openModal(`<h3>Hallo ${local.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
       setTimeout(() => { closeModal(); if (local.pwExpired) { renderChangePassword(true); } else { renderDashboard(); } }, 900);
@@ -410,6 +414,10 @@ async function init() {
     document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
     document.getElementById('logoutBtn').style.display = 'inline-block';
     setLoading(false);
+    // 🕒 "Zuletzt online" speichern (Lokaler User)
+user.lastOnline = Date.now();
+await idbPut(DB, 'users', user);
+
     const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
     setTimeout(() => { closeModal(); if (user.pwExpired) { renderChangePassword(true); } else { renderDashboard(); } }, 900);
 
@@ -590,6 +598,8 @@ async function syncFromCloud() {
               <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
             </div>
             <div class="centered" style="margin-top:10px"><button id="forgotBtn" class="accent">Zeit stoppen vergessen?</button></div>
+            <div class="centered" style="margin-top:6px"><button id="absenceBtn" class="small ghost">Meine Abwesenheiten</button></div>
+
           </section>
     
           <aside class="timer-panel" aria-label="Timer Panel">
@@ -669,6 +679,8 @@ async function syncFromCloud() {
       
       document.getElementById('refreshBtn').addEventListener('click', ()=>{ renderDashboard(); showToast('Daten neu geladen ✅'); });
       document.getElementById('forgotBtn').addEventListener('click', openManualModal);
+      document.getElementById('absenceBtn').addEventListener('click', openAbsenceModal);
+
     
       // timer bindings
       document.getElementById('startBtn').addEventListener('click', startTimer);
@@ -687,6 +699,24 @@ async function syncFromCloud() {
       // render lists and stats
       await renderCategoryList();
       renderStats();
+      if (isAdmin) {
+  const statsPanel = document.getElementById('statsPanel');
+  if (statsPanel) {
+    const absHTML = await renderAbsencePanel();
+    const div = document.createElement('div');
+    div.innerHTML = absHTML;
+    statsPanel.appendChild(div);
+
+    const toggle = div.querySelector('#toggleAbsences');
+    toggle.addEventListener('click', () => {
+      const cont = div.querySelector('#absencesContent');
+      const open = cont.style.display === 'block';
+      cont.style.display = open ? 'none' : 'block';
+      toggle.textContent = open ? 'Abwesenheiten ▾' : 'Abwesenheiten ▴';
+    });
+  }
+}
+
       // greeting
       document.getElementById('greeting').textContent = 'Hallo ' + user.displayName ;
 // ---------------------------
@@ -727,6 +757,123 @@ if (isAdmin) {
 
     }
     
+// ---------------------------
+// Abwesenheiten – Verwaltung & Anzeige
+// ---------------------------
+
+// User kann eigene Abwesenheiten verwalten
+async function openAbsenceModal() {
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  if (!user) return;
+
+  user.absences = user.absences || [];
+
+  const list = user.absences
+    .map((a, i) => `<tr>
+      <td>${a.from}</td>
+      <td>${a.to}</td>
+      <td>${escapeHtml(a.note || '')}</td>
+      <td><button class="small danger" data-idx="${i}">Löschen</button></td>
+    </tr>`)
+    .join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center">Keine Abwesenheiten</td></tr>`;
+
+  const modal = openModal(`
+    <h3>Meine Abwesenheiten 🗓️</h3>
+    <div style="margin-bottom:8px">
+      <label>Von:</label> <input id="absFrom" type="date">
+      <label>Bis:</label> <input id="absTo" type="date">
+      <label>Notiz:</label> <input id="absNote" placeholder="optional">
+      <button id="addAbsBtn" class="small accent">Hinzufügen</button>
+    </div>
+    <table style="width:100%;margin-top:10px">
+      <thead><tr><th>Von</th><th>Bis</th><th>Notiz</th><th>Aktion</th></tr></thead>
+      <tbody id="absList">${list}</tbody>
+    </table>
+  `);
+
+  // ➕ Hinzufügen
+  modal.querySelector('#addAbsBtn').onclick = async () => {
+    const from = modal.querySelector('#absFrom').value;
+    const to = modal.querySelector('#absTo').value;
+    const note = modal.querySelector('#absNote').value;
+    if (!from || !to) return alert('Bitte Zeitraum auswählen.');
+    user.absences.push({ from, to, note });
+    await idbPut(DB, 'users', user);
+    showToast('Abwesenheit hinzugefügt ✅');
+    closeModal();
+    openAbsenceModal();
+  };
+
+  // ❌ Löschen
+  modal.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.onclick = async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      user.absences.splice(idx, 1);
+      await idbPut(DB, 'users', user);
+      showToast('Abwesenheit gelöscht');
+      closeModal();
+      openAbsenceModal();
+    };
+  });
+}
+
+// Admin sieht alle Abwesenheiten
+async function renderAbsencePanel() {
+  const users = await idbGetAll(DB, 'users');
+  if (!users || users.length === 0) return '';
+
+  // Nur künftige Abwesenheiten
+  const now = new Date().toISOString().slice(0,10);
+  const rows = users
+    .flatMap(u =>
+      (u.absences || [])
+        .filter(a => a.to >= now)
+        .map(a => ({
+          name: u.displayName,
+          from: a.from,
+          to: a.to,
+          note: a.note || ''
+        }))
+    )
+    .sort((a,b) => a.from.localeCompare(b.from));
+
+  const tr = rows.map(r =>
+    `<tr>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${r.from}</td>
+      <td>${r.to}</td>
+      <td>${escapeHtml(r.note)}</td>
+    </tr>`
+  ).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+
+  // Zuletzt online-Spalte
+  const lastOnline = users
+    .map(u => `<tr>
+      <td>${escapeHtml(u.displayName)}</td>
+      <td>${u.lastOnline ? new Date(u.lastOnline).toLocaleString('de-DE') : '-'}</td>
+    </tr>`)
+    .join('');
+
+  return `
+    <div style="margin-top:16px">
+      <div class="toggle-details" id="toggleAbsences">Abwesenheiten ▾</div>
+      <div id="absencesContent" style="display:none;margin-top:8px">
+        <div style="font-weight:600;margin-bottom:6px">Kommende Abwesenheiten</div>
+        <table style="width:100%;margin-bottom:14px">
+          <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+          <tbody>${tr}</tbody>
+        </table>
+        <div style="font-weight:600;margin-bottom:6px">Zuletzt online</div>
+        <table style="width:100%">
+          <thead><tr><th>Benutzer</th><th>Letzter Login</th></tr></thead>
+          <tbody>${lastOnline}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+
     // ---------------------------
     // Categories list render (with visibility & delete rules)
     // ---------------------------
