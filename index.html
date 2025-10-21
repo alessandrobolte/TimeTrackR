@@ -812,7 +812,7 @@ async function renderDashboard() {
           <div class="sessions-list">
             <table id="sessionsTable">
               <thead>
-                <tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
+                <tr><th>Datum</th><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -1159,8 +1159,8 @@ function formatDate(dateStr) {
 const tr = rows.map(r =>
   `<tr>
     ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
-    <td>${formatDateDE(r.from)}</td>
-    <td>${formatDateDE(r.to)}</td>
+    <td>${formatDate(r.from)}</td>
+    <td>${formatDate(r.to)}</td>
     <td>${escapeHtml(r.note)}</td>
   </tr>`
 ).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
@@ -1217,7 +1217,13 @@ function renderAbsenceCalendar(absences) {
   container.className = "absence-calendar";
   container.dataset.year = new Date().getFullYear();
   container.dataset.month = new Date().getMonth();
-
+  // Hilfsfunktion Kalender -1
+  function formatDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
   // 🟡 Feiertage NRW berechnen
   function getHolidaysNRW(year) {
     const holidays = new Set();
@@ -1284,10 +1290,10 @@ function renderAbsenceCalendar(absences) {
       const from = new Date(a.from);
       const to = new Date(a.to);
       for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-        const key = d.toISOString().slice(0, 10);
-        if (!map[key]) map[key] = [];
-        map[key].push(a);
-      }
+  const key = formatDateKey(d); // ⬅️ statt d.toISOString().slice(0, 10)
+  if (!map[key]) map[key] = [];
+  map[key].push(a);
+}
     });
 
     const monthName = new Date(year, month, 1).toLocaleString("de-DE", {
@@ -1389,15 +1395,15 @@ function renderAbsenceCalendar(absences) {
           .map(a => `
             <tr>
               <td>${escapeHtml(a.name)}</td>
-              <td>${formatDateDE(a.from)}</td>
-              <td>${formatDateDE(a.to)}</td>
+              <td>${formatDate(a.from)}</td>
+              <td>${formatDate(a.to)}</td>
               <td>${escapeHtml(a.note || "")}</td>
             </tr>
           `)
           .join("");
 
         openModal(`
-          <h3>Abwesenheiten am ${formatDateDE(dateStr)}</h3>
+          <h3>Abwesenheiten am ${formatDate(dateStr)}</h3>
           <table style="width:100%;margin-top:8px">
             <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
             <tbody>${details}</tbody>
@@ -1546,35 +1552,73 @@ try {
     // ---------------------------
     // Manual entry modal (only duration)
     // ---------------------------
-    async function openManualModal(){
-      const catsVisible = await getVisibleCategories();
-      // Nur in Kategorien erfassen, in die der User schreiben darf:
-      // User: eigene + LemGOesHANA; Admin: nur LemGOesHANA
-      const user = await idbGet(DB,'users',STATE.currentUser);
-      const isAdmin = user.role==='Administrator';
-      const catsWritable = catsVisible.filter(c => isAdmin ? c.system : true);
-    
-      const selOptions = catsWritable.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-      const modal = openModal(
-        `<h3>Manuelles Nachtragen</h3>
-         <div style="margin-top:8px"><label>Kategorie</label><select id="mcat">${selOptions}</select></div>
-         <div style="margin-top:8px"><label>Dauer (Stunden)</label><input id="mhours" type="number" min="0" value="0" /> 
-           <label style="margin-left:8px">Minuten</label><input id="mmins" type="number" min="0" max="59" value="30" /></div>
-         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
-           <button id="madd" class="accent">Hinzufügen</button><button id="mclose" class="small">Abbrechen</button>
-         </div>`
-      );
-      modal.querySelector('#mclose').onclick = ()=> closeModal();
-      modal.querySelector('#madd').onclick = async ()=>{
-        const catId = modal.querySelector('#mcat').value; const h = parseInt(modal.querySelector('#mhours').value||'0',10); const m = parseInt(modal.querySelector('#mmins').value||'0',10);
-        const dur = h*60 + m; if(dur<=0){ alert('Bitte Dauer angeben.'); return; }
-        const note = prompt('Kurze Beschreibung (optional):') || '';
-        const cat = await idbGet(DB,'categories',catId); cat.sessions = cat.sessions || [];
-        cat.sessions.push({id: uid(), username: STATE.currentUser, durationMin: dur, note});
-        await idbPut(DB,'categories',cat);
-        closeModal(); showToast('Manuelle Zeit hinzugefügt'); renderDashboard();
-      };
+    async function openManualModal() {
+  const catsVisible = await getVisibleCategories();
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  const isAdmin = user.role === 'Administrator';
+  const catsWritable = catsVisible.filter(c => isAdmin ? c.system : true);
+
+  const selOptions = catsWritable
+    .map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
+    .join('');
+
+  const modal = openModal(`
+    <h3>Zeiten manuell nachtragen</h3>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+      <label>Kategorie</label>
+      <select id="mcat">${selOptions}</select>
+      <label>Datum</label>
+      <input type="date" id="manualDate" value="${new Date().toISOString().split('T')[0]}">
+      <label>Von (hh:mm)</label>
+      <input type="time" id="manualFrom">
+      <label>Bis (hh:mm)</label>
+      <input type="time" id="manualTo">
+      <label>Notiz (optional)</label>
+      <input type="text" id="manualNote" placeholder="z. B. Meeting, Nachtrag etc.">
+      <div style="text-align:right;margin-top:8px">
+        <button id="saveManual" class="accent small">Speichern</button>
+      </div>
+    </div>
+  `);
+
+  modal.querySelector('#saveManual').addEventListener('click', async () => {
+    const catId = modal.querySelector('#mcat').value;
+    const date = modal.querySelector('#manualDate').value;
+    const from = modal.querySelector('#manualFrom').value;
+    const to = modal.querySelector('#manualTo').value;
+    const note = modal.querySelector('#manualNote').value.trim();
+
+    if (!catId || !date || !from || !to) {
+      alert('Bitte Kategorie, Datum und Zeit angeben.');
+      return;
     }
+
+    const start = new Date(`${date}T${from}`);
+    const end = new Date(`${date}T${to}`);
+    const dur = Math.round((end - start) / 60000);
+    if (dur <= 0) {
+      alert('Die Endzeit muss nach der Startzeit liegen.');
+      return;
+    }
+
+    const cat = await idbGet(DB, 'categories', catId);
+    cat.sessions = cat.sessions || [];
+    cat.sessions.push({
+      id: uid(),
+      username: STATE.currentUser,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      durationMin: dur,
+      note
+    });
+
+    await idbPut(DB, 'categories', cat);
+    closeModal();
+    showToast('Manuelle Zeit gespeichert ✅');
+    renderDashboard();
+  });
+}
+
     
     // ---------------------------
     // Category details (visibility-safe)
@@ -1937,63 +1981,96 @@ function formatMinutes(min) {
     // Stats & charts (respecting visibility)
     // ---------------------------
     let currentRange='7';
-    async function renderStats(){
-      const table = document.querySelector('#statsTable tbody'); const sessionsTable = document.querySelector('#sessionsTable tbody');
-      if(!table) return;
-    
-      const cats = await getVisibleCategories();
-      const agg = [];
-      for(const c of cats){
-        const vis = await filterSessionsForViewer(c, c.sessions||[]);
-        let totalMin=0; let sessions=0;
-        vis.forEach(s=>{ const dur = s.durationMin || 0; totalMin += dur; if(dur>0) sessions++; });
-        // days/perDay/perWeek sind Schätzwerte wie zuvor
-        const days = 30; const perDay = totalMin/days; const perWeek = totalMin/7;
-        agg.push({id:c.id,name:c.name,totalMin,perDay,perWeek,sessions});
-      }
-    
-      table.innerHTML = '';
-      agg.forEach(a=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(a.name)}</td><td>${minutesToHuman(Math.round(a.totalMin))}</td><td>${Math.round(a.perDay)} min</td><td>${Math.round(a.perWeek)} min</td><td>${a.sessions}</td>`;
-        table.appendChild(tr);
-      });
-    
-      // sessions list (flatten)
-// Nutzer-Mapping vorbereiten
-const allUsers = await idbGetAll(DB, 'users');
-const userMap = {};
-for (const u of allUsers) userMap[u.username] = u.displayName;
+    async function renderStats() {
+  const table = document.querySelector('#statsTable tbody');
+  const sessionsTable = document.querySelector('#sessionsTable tbody');
+  if (!table) return;
 
-// Sessions aufbereiten
-const all = [];
-for (const c of cats) {
-  const vis = await filterSessionsForViewer(c, c.sessions || []);
-  vis.forEach(s =>
-    all.push({
-      cat: c.name,
-      dur: s.durationMin,
-      note: s.note,
-      user: userMap[s.username] || s.username
-    })
-  );
+  const cats = await getVisibleCategories();
+  const agg = [];
+  for (const c of cats) {
+    const vis = await filterSessionsForViewer(c, c.sessions || []);
+    let totalMin = 0;
+    let sessions = 0;
+    vis.forEach(s => {
+      const dur = s.durationMin || 0;
+      totalMin += dur;
+      if (dur > 0) sessions++;
+    });
+    // days/perDay/perWeek sind Schätzwerte wie zuvor
+    const days = 30;
+    const perDay = totalMin / days;
+    const perWeek = totalMin / 7;
+    agg.push({ id: c.id, name: c.name, totalMin, perDay, perWeek, sessions });
+  }
+
+  table.innerHTML = '';
+  agg.forEach(a => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(a.name)}</td>
+      <td>${minutesToHuman(Math.round(a.totalMin))}</td>
+      <td>${Math.round(a.perDay)} min</td>
+      <td>${Math.round(a.perWeek)} min</td>
+      <td>${a.sessions}</td>`;
+    table.appendChild(tr);
+  });
+
+  // Nutzer-Mapping vorbereiten
+  const allUsers = await idbGetAll(DB, 'users');
+  const userMap = {};
+  for (const u of allUsers) userMap[u.username] = u.displayName;
+
+  // Sessions aufbereiten (mit Datum)
+  const all = [];
+  for (const c of cats) {
+    const vis = await filterSessionsForViewer(c, c.sessions || []);
+    vis.forEach(s => {
+      // Datum aus Startzeit oder Datum ableiten
+      const dateStr = s.start
+        ? new Date(s.start).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : (s.date
+          ? new Date(s.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          : '');
+
+      all.push({
+        date: dateStr,
+        cat: c.name,
+        dur: s.durationMin,
+        note: s.note,
+        user: userMap[s.username] || s.username
+      });
+    });
+  }
+
+  // Tabelle ausgeben (mit neuer Datumsspalte)
+  sessionsTable.innerHTML = `
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Benutzer</th>
+        <th>Kategorie</th>
+        <th>Dauer</th>
+        <th>Notiz</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${all.map(s => `
+        <tr>
+          <td>${escapeHtml(s.date || '')}</td>
+          <td>${escapeHtml(s.user || '')}</td>
+          <td>${escapeHtml(s.cat)}</td>
+          <td>${minutesToHuman(s.dur)}</td>
+          <td>${escapeHtml(s.note || '')}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+
+  drawBarChart();
+  drawLineChart();
 }
 
-// Tabelle ausgeben
-sessionsTable.innerHTML = all
-  .map(
-    s => `<tr>
-      <td>${escapeHtml(s.user || '')}</td>
-      <td>${escapeHtml(s.cat)}</td>
-      <td>${minutesToHuman(s.dur)}</td>
-      <td>${escapeHtml(s.note || '')}</td>
-    </tr>`
-  )
-  .join('');
-
-    
-      drawBarChart(); drawLineChart();
-    }
     
  // ---------------------------
 // Echte BarChart-Daten
@@ -2677,7 +2754,7 @@ setInterval(() => {
     console.log('📴 Offline – Auto-Sync übersprungen');
   }
 }, 300 * 1000);
-function formatDateDE(dateStr) {
+function formatDateToDE(dateStr) {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
