@@ -1,0 +1,2695 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TimeTrackR — LemGOesHANA</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
+<style>
+  :root{
+    --bg:#f3f4f6;
+    --panel:#ffffff;
+    --text:#0b1220;
+    --muted:#425066;
+    --accent1:#28a745;
+    --accent2:#3b82f6;
+    --radius:12px;
+    --shadow: 0 8px 24px rgba(15,23,42,0.06);
+  }
+  :root.dark{
+    --bg:#0b0b0c;
+    --panel:#0f1112;
+    --text:#e8e8e8;
+    --muted:#9aa0a6;
+    --accent1:#ff4d4f;
+    --accent2:#ff902b;
+    --shadow: 0 8px 28px rgba(0,0,0,0.6);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:20px;display:flex;justify-content:center;
+  }
+
+  .app{width:100%;max-width:1100px;}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  h1{margin:0;font-size:1.6rem}
+  .top-controls{display:flex;gap:10px;align-items:center}
+  button{background:var(--panel);border:1px solid rgba(0,0,0,0.06);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer;box-shadow:var(--shadow)}
+  .small{padding:6px 10px;font-size:0.9rem}
+  .ghost{background:transparent}
+  .accent{background:linear-gradient(90deg,var(--accent1),var(--accent2));border:none;color:#fff}
+  .danger{background:transparent;border:1px solid var(--accent1);color:var(--accent1)}
+
+  .top{display:flex;gap:16px;align-items:flex-start}
+  .cats-panel{flex:1;background:var(--panel);padding:16px;border-radius:var(--radius)}
+  .timer-panel{width:360px;min-width:260px;background:var(--panel);padding:18px;border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;gap:10px}
+
+  .category-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .category-card{padding:10px 12px;border-radius:10px;background:linear-gradient(90deg, rgba(0,0,0,0.02), transparent);display:flex;align-items:center;gap:12px;border:1px solid rgba(0,0,0,0.04)}
+  .category-name{font-weight:700}
+  .category-meta{font-size:0.85rem;color:var(--muted)}
+
+  .time-big{font-size:2.2rem;font-weight:800}
+  .timer-controls{display:flex;gap:8px;margin-top:8px}
+  select,input{
+  padding:8px;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,0.15);
+  background:var(--panel);   /* ✅ Fix */
+  color:var(--text);
+}
+  input[type="number"]{width:80px}
+
+  .actions-row{display:flex;gap:8px;align-items:center;margin-top:12px}
+  .centered{display:flex;justify-content:center}
+
+  .stats-panel{background:var(--panel);padding:14px;border-radius:var(--radius);margin-top:14px}
+  .stats-header{display:flex;align-items:center;justify-content:space-between}
+  .toggle-details{cursor:pointer;color:var(--muted);font-size:0.95rem}
+  .charts{display:grid;grid-template-columns:1fr 420px;gap:12px;margin-top:12px}
+  canvas{background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent);border-radius:10px;padding:8px}
+  .absence-calendar button.small.ghost {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px dashed rgba(0,0,0,0.06)}
+  .sessions-list{max-height:220px;overflow:auto}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .modal{background:var(--panel);padding:18px;border-radius:12px;min-width:320px;max-width:720px}
+  .form-row{display:flex;gap:8px;margin-bottom:8px}
+  label{font-size:0.9rem;color:var(--muted);min-width:120px;display:inline-block}
+
+  @media (max-width:980px){ .charts{grid-template-columns:1fr} .timer-panel{width:100%} .top{flex-direction:column} }
+
+  .tooltip{position:absolute;padding:6px 8px;border-radius:6px;background:var(--panel);border:1px solid rgba(0,0,0,0.06);pointer-events:none;font-size:0.9rem;z-index:10000}
+  #toast{z-index:9999;backdrop-filter:blur(6px);}
+  :root:not(.dark) #toast{background:#0077cc;color:white}
+  .dark #toast{background:#ff6600;color:#fff}
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div>
+        <h2 id="appTitle"><img src="/assets/TimeTrackR.png" alt="TimeTrackR Logo" style="height:32px;"></h2>
+        <div id="loading" style="display:none;color:var(--muted);font-size:0.9rem">⏳ Einloggen ... Lade Daten</div>
+      </div>
+      <div class="top-controls">
+        <div id="greeting" style="font-weight:600;color:var(--muted)"></div>
+        <button id="modeToggle" class="small" title="Theme wechseln">☀️</button>
+        <button id="logoutBtn" class="small ghost" style="display:none">Ausloggen</button>
+      </div>
+    </header>
+
+    <div id="mainContent">
+      <!-- Content rendered by JS -->
+    </div>
+
+    <div id="modalRoot"></div>
+  </div>
+
+  <script>
+    async function sha256Hex(str) {
+  const enc = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest("SHA-256", enc);
+  const bytes = new Uint8Array(digest);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+    // ---------------------------
+    // Simple IndexedDB wrapper (promisified)
+    // ---------------------------
+    function openDB(name, version=1){
+      return new Promise((res, rej)=>{
+        const r = indexedDB.open(name, version);
+        r.onupgradeneeded = e => {
+          const db = e.target.result;
+          if(!db.objectStoreNames.contains('users')) db.createObjectStore('users',{keyPath:'username'});
+          if(!db.objectStoreNames.contains('categories')) db.createObjectStore('categories',{keyPath:'id'});
+          if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'k'});
+        };
+        r.onsuccess = e => res(e.target.result);
+        r.onerror = e => rej(e.target.error);
+      });
+    }
+    async function idbGet(db, store, key) {
+  if (!db) db = await openDB('zm_db', 1); // 🔧 sicherstellen, dass DB offen ist
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const os = tx.objectStore(store);
+    const r = os.get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+    function idbPut(db, store, val){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    function idbGetAll(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const r=os.getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    function idbDelete(db, store, key){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+    async function idbClear(db, store){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const r=os.clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+    // ---------------------------
+// Cloudflare API: Session speichern / abrufen
+// ---------------------------
+async function saveSessionToCloud(session) {
+  try {
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveSession", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    });
+  } catch (err) {
+    console.error("❌ Fehler beim Cloud-Speichern:", err);
+  }
+}
+
+async function loadSessionsFromCloud(username) {
+  try {
+    const res = await fetch(
+      `https://timetrackr.alessandrobolte.workers.dev/api/getSessions?username=${encodeURIComponent(username)}`
+    );
+    if (!res.ok) throw new Error(res.statusText);
+    return await res.json();
+  } catch (err) {
+    console.error("❌ Fehler beim Cloud-Laden:", err);
+    return [];
+  }
+}
+
+    // ---------------------------
+    // App Constants & initial data
+    // ---------------------------
+    const INIT_PW = 'Stadtwerke1';
+    const USERS = [
+      ['admin', INIT_PW, 'Projektleiter', 'Administrator'],
+      ['alessandro', INIT_PW, 'Alessandro Bolte', 'User'],
+      ['michael', INIT_PW, 'Michael Teuber', 'User'],
+      ['dominik', INIT_PW, 'Dominik Schulte', 'User'],
+      ['christiane', INIT_PW, 'Christiane Kuhlemann', 'User'],
+      ['fabian', INIT_PW, 'Fabian Brinkmann', 'User'],
+      ['kati', INIT_PW, 'Kati Kretzschmar', 'User'],
+      ['denise', INIT_PW, 'Denise Carnovale', 'User'],
+      ['philip', INIT_PW, 'Philip Rolf', 'User'],
+      ['marcel', INIT_PW, 'Marcel Sander', 'User'],
+      ['yannik', INIT_PW, 'Yannik Siebert', 'User']
+    ];
+    const NON_DELETABLE_CATEGORY_NAME = 'LemGOesHANA';
+    
+    let DB = null;
+    let STATE = { currentUser: null };
+    
+    // ---------------------------
+    // Utils
+    // ---------------------------
+    const uid = ()=> Math.random().toString(36).slice(2,9);
+    const minutesToHuman = min => { const h = Math.floor(min/60); const m = Math.round(min%60); return `${h}h ${m}m`; };
+    const msToHms = ms => { if(!isFinite(ms)) return '--:--:--'; const secs=Math.floor(ms/1000); const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60), s=secs%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
+    
+    // ---------------------------
+    // Initialization: DB and default data
+    // ---------------------------
+// ---------------------------
+// Initialization: DB and default data
+// ---------------------------
+async function init() {
+  DB = await openDB('zm_db', 1);
+
+  // 🩺 Sicherstellen, dass LemGOesHANA existiert (nur einmal prüfen)
+  try {
+    const cats = await idbGetAll(DB, 'categories');
+    let lem = cats.find(c => c.name.toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase());
+    if (!lem) {
+      lem = {
+        id: uid(),
+        name: NON_DELETABLE_CATEGORY_NAME,
+        owner: 'system',
+        system: true,
+        sessions: []
+      };
+      await idbPut(DB, 'categories', lem);
+      console.log('✅ LemGOesHANA wurde neu angelegt');
+    } else {
+      // Repariere evtl. falsche Flags
+      let changed = false;
+      if (!lem.system) { lem.system = true; changed = true; }
+      if (lem.owner !== 'system') { lem.owner = 'system'; changed = true; }
+      if (changed) {
+        await idbPut(DB, 'categories', lem);
+        console.log('🔧 LemGOesHANA repariert');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Fehler beim LemGOesHANA-Check:', err);
+  }
+
+  // ensure users exist
+  const existing = await idbGetAll(DB, 'users');
+  if (!existing || existing.length === 0) {
+    for (const u of USERS) {
+      await idbPut(DB, 'users', {
+        username: u[0],
+        password: u[1],
+        displayName: u[2],
+        role: u[3],
+        pwExpired: true
+      });
+    }
+  }
+
+  // theme
+  const theme = localStorage.getItem('zm_theme') || 'light';
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.getElementById('modeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
+
+  ensureToastStyles();
+  bindUI();
+  renderLogin();
+}
+
+    
+    // ---------------------------
+    // UI bindings and helpers
+    // ---------------------------
+    function setLoading(show, text=''){ const el=document.getElementById('loading'); if(show){ el.style.display='block'; el.textContent = text || '⏳ Einloggen ... Lade Daten'; } else el.style.display='none'; }
+    function showToast(msg, ms=2200){
+      let t=document.getElementById('toast');
+      if(!t){
+        t=document.createElement('div');
+        t.id='toast';
+        // baseline styles; theme colors kommen aus CSS-Variablen
+        t.style.position='fixed';
+        t.style.top='16px';
+        t.style.right='16px';
+        t.style.maxWidth='280px';
+        t.style.padding='10px 12px';
+        t.style.borderRadius='10px';
+        t.style.boxShadow='var(--shadow)';
+        t.style.fontSize='0.95rem';
+        t.style.display='none';
+        t.style.zIndex='99999';
+        document.body.appendChild(t);
+      }
+      t.textContent=msg;
+      t.style.display='block';
+      t.style.opacity='1';
+      setTimeout(()=>{
+        t.style.opacity='0';
+        setTimeout(()=>t.style.display='none',400);
+      },ms);
+    }
+    function ensureToastStyles(){
+      // Nothing else to do (colors kommen aus globalem CSS),
+      // aber falls Styles überschrieben waren, setzen wir sie hier erneut.
+      const t=document.getElementById('toast');
+      if(t){
+        t.style.position='fixed';
+        t.style.top='16px';
+        t.style.right='16px';
+        t.style.maxWidth='280px';
+        t.style.padding='10px 12px';
+        t.style.borderRadius='10px';
+        t.style.boxShadow='var(--shadow)';
+        t.style.zIndex='99999';
+      }
+    }
+    
+    function bindUI(){
+      document.getElementById('modeToggle').addEventListener('click', ()=>{
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('zm_theme', isDark? 'dark':'light');
+        document.getElementById('modeToggle').textContent = isDark? '🌙':'☀️';
+      });
+      document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  STATE.currentUser = null;
+
+  // Begrüßungsbereiche leeren/ausblenden
+  const g = document.getElementById('greeting');
+  if (g) { g.innerHTML = ''; g.style.display = 'none'; }
+
+  // Zusätzliche Begrüßung direkt unter dem Header entfernen
+  document.getElementById('greetingTop')?.remove();
+
+  // Dashboard-Subtitel entfernen (falls vorhanden)
+  document.getElementById('dashboardSubtitle')?.remove();
+
+  // Wochen-Toast entfernen (falls noch sichtbar)
+  document.getElementById('weeklyToast')?.remove();
+
+  // Logout-Button ausblenden
+  document.getElementById('logoutBtn').style.display = 'none';
+
+  // Login rendern
+  renderLogin();
+});
+    }
+    
+    // ---------------------------
+    // Login Flow (client-side login for demo)
+    // ---------------------------
+    async function renderLogin() {
+  // 👋 Begrüßung im Login vollständig ausblenden oder löschen
+  const greetingEl = document.getElementById('greeting');
+  if (greetingEl) {
+    greetingEl.innerHTML = '';
+    greetingEl.style.display = 'none';
+  }
+
+  // 🧹 Optional: auch Dashboard-Überreste (Admin/User-Panels) leeren
+  const main = document.getElementById('mainContent');
+  if (main) main.innerHTML = '';
+
+  // 🧹 Logout-Button verstecken (wichtig beim Rücksprung)
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.style.display = 'none';
+
+  // 🧹 Dashboard-Subtitle ebenfalls leeren
+  const dashSubtitle = document.getElementById('dashboardSubtitle');
+  if (dashSubtitle) dashSubtitle.remove();
+
+  main.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
+      <div style="width:380px;padding:18px;border-radius:12px;background:var(--panel);box-shadow:var(--shadow)">
+        <h2 style="margin-top:0">Login 🔐</h2>
+        <div style="margin-bottom:8px;color:var(--muted)">Bitte melde dich mit deinem Benutzernamen an.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input id="loginUser" placeholder="Benutzername" autofocus />
+          <input id="loginPw" placeholder="Passwort" type="password" />
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="loginBtn" class="accent">Einloggen</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:0.9rem;color:var(--muted)"></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPw').value;
+    if (!u || !p) {
+      alert('Bitte Benutzername und Passwort eingeben.');
+      return;
+    }
+    setLoading(true, '⏳ Einloggen ... Lade Daten');
+
+    try {
+      // 1️⃣ Cloud abfragen
+      let cloudUser = null;
+      try {
+        const r = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getUser?username=${encodeURIComponent(u)}`);
+        if (r.ok) {
+          const j = await r.json();
+          if (j.ok && j.user) cloudUser = j.user;
+        }
+      } catch {
+        /* offline → fallback */
+      }
+
+      if (cloudUser) {
+        // 2️⃣ Passwort prüfen
+        const givenHash = await sha256Hex(p);
+        if (givenHash !== cloudUser.passwordHash) {
+          setLoading(false);
+          alert('Falsches Passwort.');
+          return;
+        }
+
+        // 3️⃣ Lokalen User synchronisieren
+        let local = await idbGet(DB, 'users', u);
+        if (!local) {
+          local = {
+            username: cloudUser.username,
+            password: '***cloud***',
+            displayName: cloudUser.displayName || cloudUser.username,
+            role: cloudUser.role || 'User',
+            pwExpired: !!cloudUser.pwExpired
+          };
+        } else {
+          local.displayName = cloudUser.displayName || local.displayName;
+          local.role = cloudUser.role || local.role;
+          local.pwExpired = !!cloudUser.pwExpired;
+        }
+        await idbPut(DB, 'users', local);
+
+        // 🔄 Abwesenheiten abrufen
+        try {
+          const resp = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=${encodeURIComponent(local.username)}`);
+          if (resp.ok) {
+            const abs = await resp.json();
+            local.absences = abs;
+            await idbPut(DB, 'users', local);
+          }
+        } catch (e) {
+          console.warn('⚠️ Abwesenheiten konnten nicht aus Cloud geladen werden', e);
+        }
+
+        STATE.currentUser = local.username;
+        localStorage.setItem('zm_lastUser', local.username);
+
+        // 🧹 Begrüßung noch nicht anzeigen
+        const greeting = document.getElementById('greeting');
+        if (greeting) {
+          greeting.innerHTML = '';
+          greeting.style.display = 'none';
+        }
+
+        document.getElementById('logoutBtn').style.display = 'inline-block';
+        setLoading(false);
+
+        // ⏱ Letzter Login
+        local.lastOnline = Date.now();
+        await idbPut(DB, 'users', local);
+
+        const gm = openModal(`<h3>Hallo ${local.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+        setTimeout(() => {
+          closeModal();
+          if (local.pwExpired) {
+            renderChangePassword(true);
+          } else {
+            renderDashboard();
+          }
+        }, 900);
+        return;
+      }
+
+      // 4️⃣ Fallback → Lokaler User
+      const user = await idbGet(DB, 'users', u);
+      if (!user) {
+        setLoading(false);
+        alert('Benutzer nicht gefunden.');
+        return;
+      }
+      if (user.password !== p) {
+        setLoading(false);
+        alert('Falsches Passwort.');
+        return;
+      }
+
+      STATE.currentUser = user.username;
+      localStorage.setItem('zm_lastUser', user.username);
+
+      // 🧹 Begrüßung wieder leeren
+      const greeting = document.getElementById('greeting');
+      if (greeting) {
+        greeting.innerHTML = '';
+        greeting.style.display = 'none';
+      }
+
+      document.getElementById('logoutBtn').style.display = 'inline-block';
+      setLoading(false);
+
+      // ⏱ Letzter Login speichern
+      user.lastOnline = Date.now();
+      await idbPut(DB, 'users', user);
+
+      const gm = openModal(`<h3>Hallo ${user.displayName} 👋</h3><div style="margin-top:8px;color:var(--muted)">Du wirst jetzt weitergeleitet …</div>`);
+      setTimeout(() => {
+        closeModal();
+        if (user.pwExpired) {
+          renderChangePassword(true);
+        } else {
+          renderDashboard();
+        }
+      }, 900);
+
+    } catch (e) {
+      setLoading(false);
+      alert('Fehler beim Einloggen');
+    }
+  });
+}
+    
+    // ---------------------------
+    // Password change (forced on first login)
+    // ---------------------------
+    async function renderChangePassword(forced=false){
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;min-height:420px">
+          <div style="width:420px;padding:18px;border-radius:12px;background:var(--panel);box-shadow:var(--shadow)">
+            <h2>Passwort ändern 🔑</h2>
+            <div style="margin-bottom:8px;color:var(--muted)">Bitte wähle ein neues Passwort (mind. 6 Zeichen).</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <input id="newPw" placeholder="Neues Passwort" type="password" />
+              <input id="newPw2" placeholder="Neues Passwort wiederholen" type="password" />
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button id="savePwBtn" class="accent">Speichern</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('savePwBtn').addEventListener('click', async () => {
+  const a = document.getElementById('newPw').value;
+  const b = document.getElementById('newPw2').value;
+  if (!a || a.length < 6) { alert('Passwort zu kurz (mind. 6 Zeichen).'); return; }
+  if (a !== b) { alert('Passwörter stimmen nicht überein.'); return; }
+
+  const username = STATE.currentUser;
+  const user = await idbGet(DB,'users', username);
+  if (!user) { alert('Benutzer unbekannt.'); return; }
+
+  // 1) Lokal weiter pflegen (für Offline-Fall/Nur-Demo-User)
+  user.password = a;           // nur für lokale Accounts relevant
+  user.pwExpired = false;
+  await idbPut(DB,'users', user);
+
+  // 2) In die Cloud synchronisieren (gehashter Passwortwert)
+  try {
+    const passwordHash = await sha256Hex(a);
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveUser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        passwordHash,
+        displayName: user.displayName,
+        role: user.role,
+        pwExpired: false
+      })
+    });
+  } catch (err) {
+    console.warn("⚠️ Konnte gehashtes Passwort nicht an die Cloud senden:", err);
+    // kein Abbruch – lokal ist das Passwort korrekt geändert
+  }
+
+  showToast('Passwort geändert ✅');
+  renderDashboard();
+});
+
+    }
+    
+// ---------------------------
+// Sichtbare Kategorien (inkl. LemGOesHANA für alle User)
+// ---------------------------
+async function getVisibleCategories() {
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  if (!user) return [];
+  const isAdmin = user.role === 'Administrator';
+  const cats = await idbGetAll(DB, 'categories');
+
+  if (isAdmin) {
+    // Admin sieht nur LemGOesHANA
+    return cats.filter(c => c.system && c.name === NON_DELETABLE_CATEGORY_NAME);
+  } else {
+    // User sieht eigene Kategorien + LemGOesHANA
+    return cats.filter(c =>
+      c.owner === STATE.currentUser ||
+      (c.system && c.name === NON_DELETABLE_CATEGORY_NAME)
+    );
+  }
+}
+
+    function filterSessionsForViewer(cat, sessions){
+      if(!sessions) return [];
+      // Admin: alle Sessions in LemGOesHANA
+      // User: nur eigene Sessions (auch in LemGOesHANA)
+      const isAdminPromise = idbGet(DB,'users',STATE.currentUser).then(u=> u && u.role==='Administrator');
+      // return a proxy promise consumer uses with await
+      return (async()=>{
+        const isAdmin = await isAdminPromise;
+        if(isAdmin) return cat.system ? sessions.slice() : []; // Admin hat nur LemGOesHANA im Blick
+        return sessions.filter(s=> (s && s.username === STATE.currentUser));
+      })();
+    }
+    // ---------------------------
+// Cloudflare → Lokaler Sync (beim Login oder Dashboard-Start)
+// ---------------------------
+async function syncFromCloud() {
+  if (!STATE.currentUser) return;
+  try {
+    const res = await fetch(`https://timetrackr.alessandrobolte.workers.dev/api/getSessions?username=${STATE.currentUser}`);
+    if (!res.ok) throw new Error("Fehler beim Abruf der Cloud-Daten");
+    const sessions = await res.json();
+    if (!Array.isArray(sessions) || sessions.length === 0) return;
+
+    console.log(`☁️ ${sessions.length} Cloud-Sessions geladen`);
+
+    // Kategorien aus DB laden
+    const cats = await idbGetAll(DB, "categories");
+    const catMap = new Map(cats.map(c => [c.name, c]));
+
+    for (const s of sessions) {
+      const catName = s.category || "Allgemein";
+      let cat = catMap.get(catName);
+
+      // Falls Kategorie lokal nicht existiert → erstellen
+      if (!cat) {
+        cat = { id: uid(), name: catName, owner: STATE.currentUser, sessions: [] };
+        await idbPut(DB, "categories", cat);
+        catMap.set(catName, cat);
+      }
+
+      // Prüfen, ob Session schon lokal existiert
+      const exists = (cat.sessions || []).some(x => x.id === s.id);
+      if (!exists) {
+        cat.sessions = cat.sessions || [];
+        cat.sessions.push({
+          id: s.id,
+          username: STATE.currentUser,
+          durationMin: s.durationMin,
+          note: s.note || ""
+        });
+        await idbPut(DB, "categories", cat);
+      }
+    }
+
+    console.log("✅ Cloud-Sessions lokal synchronisiert");
+  } catch (err) {
+    console.warn("⚠️ Cloud-Sync fehlgeschlagen:", err);
+  }
+}
+// ---------------------------
+// Cloud-Sync: Abwesenheiten (globaler Abgleich)
+// ---------------------------
+async function syncAbsencesFromCloud() {
+  if (!STATE.currentUser || !DB) return;
+  const currentUser = await idbGet(DB, "users", STATE.currentUser);
+  if (!currentUser) return;
+
+  const isAdmin = currentUser.role === "Administrator";
+  try {
+    // Admin lädt alle, User nur eigene Abwesenheiten
+    const url = isAdmin
+      ? "https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=all"
+      : `https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=${encodeURIComponent(currentUser.username)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+
+    if (isAdmin) {
+      // Admin: alle Benutzer in DB aktualisieren
+      const users = await idbGetAll(DB, "users");
+      for (const u of users) {
+        const abs = data[u.username] || [];
+        u.absences = abs;
+        await idbPut(DB, "users", u);
+      }
+      console.log("☁️ Admin: Alle Abwesenheiten synchronisiert");
+    } else {
+      // User: nur eigene Abwesenheiten
+      currentUser.absences = data || [];
+      await idbPut(DB, "users", currentUser);
+      console.log("☁️ Abwesenheiten für", currentUser.username, "synchronisiert");
+    }
+  } catch (err) {
+    console.warn("⚠️ syncAbsencesFromCloud fehlgeschlagen:", err);
+  }
+}
+
+// ---------------------------
+// Dashboard (User + Admin)
+// ---------------------------
+async function renderDashboard() {
+  await syncFromCloud();
+  await syncAbsencesFromCloud();
+
+  const greetingEl = document.getElementById('greeting');
+  if (greetingEl) greetingEl.style.display = ''; // Falls ausgeblendet
+
+  // 🔹 Logout-Button wieder einblenden
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.style.display = 'inline-block';
+
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  if (!user) return renderLogin();
+
+  const isAdmin = user.role === 'Administrator';
+  const catsVisible = await getVisibleCategories();
+
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="top">
+      <section class="cats-panel" aria-labelledby="catsTitle">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center">
+            ${isAdmin ? '' : '<button id="addCategoryBtn" class="accent small">Kategorie hinzufügen</button>'}
+            ${isAdmin ? '' : '<button id="delModeBtn" class="ghost small" aria-pressed="false">Löschen</button>'}
+          </div>
+          <div style="text-align:right">
+            <div id="catsTitle" style="font-size:0.9rem;color:var(--muted)">Kategorien</div>
+          </div>
+        </div>
+
+        <div class="category-list" id="categoryList"></div>
+
+        <div class="actions-row" style="margin-top:12px">
+          <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" />
+          ${isAdmin ? `
+            <button id="exportBtn" class="small ghost">Export (CSV)</button>
+            <button id="importBtn" class="small ghost">Import</button>
+            <button id="refreshBtn" class="small ghost">🔄 Refresh</button>
+          ` : ''}
+        </div>
+
+        <div class="centered" style="margin-top:10px">
+          <button id="forgotBtn" class="accent">Zeiten manuell nachtragen</button>
+        </div>
+        <div class="centered" style="margin-top:6px">
+          <button id="absenceBtn" class="accent" style="min-width:180px;">
+            Meine Abwesenheiten
+          </button>
+        </div>
+      </section>
+
+      <aside class="timer-panel" aria-label="Timer Panel">
+        <div style="font-size:0.9rem;color:var(--muted)">Aktueller Timer</div>
+        <div class="time-big" id="activeTimerDisplay">--:--:--</div>
+        <div style="width:100%;display:flex;gap:8px;align-items:center">
+          <label for="activeCategorySelect" style="min-width:110px;color:var(--muted)">Kategorie</label>
+          <select id="activeCategorySelect" aria-label="Aktive Kategorie" style="flex:1"></select>
+        </div>
+        <div class="timer-controls" style="width:100%;justify-content:center">
+          <button id="startBtn" class="small">Start</button>
+          <button id="stopBtn" class="small">Stop</button>
+        </div>
+        <div style="font-size:0.9rem;color:var(--muted);text-align:center;margin-top:6px">
+          Timer läuft auch nach Reload weiter
+        </div>
+        <button id="undockBtn" class="small ghost" style="margin-top:6px">Timer abdocken</button>
+      </aside>
+    </div>
+
+    <section class="stats-panel" id="statsPanel">
+      <div class="stats-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div id="statsTitle" style="font-weight:700">Statistiken</div>
+        <div class="toggle-details" id="toggleStats">Ausklappen ▾</div>
+      </div>
+
+      <div id="statsContent" style="display:none;margin-top:10px">
+        <div id="rangeButtons" style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="small" data-range="7">Letzte 7 Tage</button>
+          <button class="small" data-range="14">Letzte 14 Tage</button>
+          <button class="small" data-range="30">30 Tage</button>
+          <button class="small" data-range="all">Gesamt</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:320px">
+            <table id="statsTable">
+              <thead>
+                <tr><th>Kategorie</th><th>Gesamt</th><th>Ø / Tag</th><th>/ Woche</th><th>Sessions</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="width:420px">
+            <canvas id="barChart" width="420" height="220" role="img"></canvas>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="font-weight:700;margin-bottom:8px">Verlauf</div>
+          <canvas id="lineChart" width="980" height="240" style="width:100%"></canvas>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
+          <div class="sessions-list">
+            <table id="sessionsTable">
+              <thead>
+                <tr><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+
+  // USER-spezifische Aktionen
+  if (!isAdmin) {
+    const addBtn = document.getElementById('addCategoryBtn');
+    const delBtn = document.getElementById('delModeBtn');
+    if (addBtn) addBtn.addEventListener('click', async () => {
+      const name = prompt('Name der Kategorie:');
+      if (!name) return;
+      if (name.trim().toLowerCase() === NON_DELETABLE_CATEGORY_NAME.toLowerCase()) {
+        alert('Diese Kategorie ist reserviert.');
+        return;
+      }
+      const existing = await idbGetAll(DB, 'categories');
+      if (existing.some(c => c.owner === STATE.currentUser && c.name.toLowerCase() === name.toLowerCase())) {
+        alert('Kategorie existiert bereits.');
+        return;
+      }
+      const id = uid();
+      await idbPut(DB, 'categories', { id, name, owner: STATE.currentUser, system: false, sessions: [] });
+      renderDashboard();
+    });
+    if (delBtn) delBtn.addEventListener('click', () => {
+      const pressed = delBtn.getAttribute('aria-pressed') === 'true';
+      delBtn.setAttribute('aria-pressed', String(!pressed));
+      renderCategoryList();
+    });
+  }
+
+  // Gemeinsame Aktionen
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  if (exportBtn) exportBtn.addEventListener('click', exportCSV);
+  if (importBtn && importFile) {
+    importBtn.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const txt = await f.text();
+      parseImportCSV(txt);
+      e.target.value = '';
+    });
+  }
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      renderDashboard();
+      showToast('Daten neu geladen ✅');
+    });
+  }
+
+  // Timer + Manuell + Abwesenheit
+  document.getElementById('forgotBtn').addEventListener('click', openManualModal);
+  document.getElementById('absenceBtn').addEventListener('click', openAbsenceModal);
+  document.getElementById('startBtn').addEventListener('click', startTimer);
+  document.getElementById('stopBtn').addEventListener('click', stopTimer);
+  document.getElementById('undockBtn').addEventListener('click', openMiniTimerWindow);
+
+  // Statistik-Toggle
+  document.getElementById('toggleStats').addEventListener('click', () => {
+    const cont = document.getElementById('statsContent');
+    const open = cont.style.display === 'block';
+    cont.style.display = open ? 'none' : 'block';
+    document.getElementById('toggleStats').textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+    drawBarChart();
+    drawLineChart();
+  });
+
+  // Kategorien + Stats
+  await renderCategoryList();
+  renderStats();
+
+  // -----------------------------
+  // Abwesenheiten-Panel
+  // -----------------------------
+  const statsPanel = document.getElementById('statsPanel');
+  if (statsPanel) {
+    const absPanel = await renderAbsencePanel(isAdmin ? null : STATE.currentUser);
+    statsPanel.appendChild(absPanel);
+  }
+
+  // -----------------------------
+  // Admin-spezifische Panels
+  // -----------------------------
+  if (isAdmin) {
+    const catsPanel = document.querySelector('.cats-panel');
+    if (catsPanel) {
+      const panel = document.createElement('div');
+      panel.style.marginTop = '12px';
+      panel.innerHTML = `
+        <div id="adminHeader" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--card-bg, var(--bg));padding:6px 8px;border-radius:8px;border:1px solid var(--border);">
+          <div style="font-weight:600;color:var(--text)">Admin-Funktionen</div>
+          <div id="adminToggle" style="color:var(--muted)">Ausklappen ▾</div>
+        </div>
+        <div id="adminContent" style="display:none;margin-top:6px;padding:8px;background:var(--surface, var(--bg));border:1px solid var(--border);border-radius:8px;">
+          <button id="adminViewBtn" class="small accent" style="margin-top:6px">LemGOesHANA ansehen</button>
+          <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">
+          <div style="font-size:0.9rem;color:var(--muted);margin-bottom:6px">Benutzerverwaltung:</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="userSelect" class="small" style="flex:1;min-width:140px"></select>
+            <button id="resetUserPwBtn" class="small ghost">🔁 Passwort zurücksetzen</button>
+            <button id="addUserBtn" class="small ghost">➕ Benutzer hinzufügen</button>
+          </div>
+        </div>`;
+      catsPanel.appendChild(panel);
+
+      const adminHeader = panel.querySelector('#adminHeader');
+      const adminContent = panel.querySelector('#adminContent');
+      const adminToggle = panel.querySelector('#adminToggle');
+      const viewBtn = panel.querySelector('#adminViewBtn');
+      const resetBtn = panel.querySelector('#resetUserPwBtn');
+      const addBtn = panel.querySelector('#addUserBtn');
+      const userSelect = panel.querySelector('#userSelect');
+
+      if (adminHeader && adminContent && adminToggle) {
+        adminHeader.addEventListener('click', () => {
+          const open = adminContent.style.display === 'block';
+          adminContent.style.display = open ? 'none' : 'block';
+          adminToggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+        });
+      }
+      if (viewBtn) viewBtn.addEventListener('click', showAdminView);
+      if (resetBtn) resetBtn.addEventListener('click', async () => {
+        const name = userSelect?.value;
+        if (name) await resetUserPassword(name);
+      });
+      if (addBtn) addBtn.addEventListener('click', addNewUser);
+      if (typeof populateUserDropdown === 'function') populateUserDropdown();
+    }
+  }
+
+  // -----------------------------
+  // Dashboard-Begrüßung (nur sichtbar im Dashboard)
+  // -----------------------------
+  const oldGreet = document.getElementById('greetingTop');
+  if (oldGreet) oldGreet.remove();
+
+  const header = document.querySelector('header');
+  if (header && STATE.currentUser) {
+    const greet = document.createElement('div');
+    greet.id = 'greetingTop';
+    greet.style.fontSize = '0.8rem';
+    greet.style.color = 'var(--muted)';
+    greet.style.margin = '6px 12px 0 0';
+    greet.style.textAlign = 'right';
+    greet.style.whiteSpace = 'nowrap';
+    greet.textContent = `👋 Hallo ${user.displayName}`;
+    header.insertAdjacentElement('afterend', greet);
+  }
+
+  // -----------------------------
+  // Wochenübersicht als Toast (oben rechts)
+  // -----------------------------
+  const totalMin = await getWeeklyTotalMinutes();
+  const msg = totalMin > 0
+    ? `Du hast diese Woche ${formatMinutes(totalMin)} an Projekten gearbeitet.`
+    : `Noch keine erfassten Zeiten für Projekte in dieser Woche.`;
+
+  document.getElementById('weeklyToast')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'weeklyToast';
+  toast.textContent = msg;
+
+  toast.style.position = 'fixed';
+  toast.style.top = '20px';
+  toast.style.right = '20px';
+  toast.style.zIndex = '9999';
+  toast.style.background = 'linear-gradient(90deg,#ff7a18,#af002d 70%)';
+  toast.style.color = '#fff';
+  toast.style.padding = '10px 18px';
+  toast.style.borderRadius = '20px';
+  toast.style.fontSize = '0.9rem';
+  toast.style.fontWeight = '500';
+  toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+  toast.style.opacity = '0';
+  toast.style.transition = 'opacity 0.4s ease';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.style.opacity = '1', 100);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
+
+
+
+    
+// ---------------------------
+// Abwesenheiten – Verwaltung & Anzeige
+// ---------------------------
+
+// User kann eigene Abwesenheiten verwalten
+async function openAbsenceModal() {
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  if (!user) return;
+
+  user.absences = user.absences || [];
+
+
+
+const list = user.absences
+  .map((a, i) => `<tr>
+    <td>${formatDate(a.from)}</td>
+    <td>${formatDate(a.to)}</td>
+    <td>${escapeHtml(a.note || '')}</td>
+    <td><button class="small danger" data-idx="${i}">Löschen</button></td>
+  </tr>`)
+  .join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center">Keine Abwesenheiten</td></tr>`;
+
+
+    const modal = openModal(`
+  <h3>Meine Abwesenheiten 🗓️</h3>
+  
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+    <label>Von:</label><input id="absFrom" type="date">
+    <label>Bis:</label><input id="absTo" type="date">
+  </div>
+
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+    <label>Notiz:</label>
+    <input id="absNote" placeholder="optional" style="flex:1;min-width:180px">
+    <button id="addAbsBtn" class="small accent">Hinzufügen</button>
+  </div>
+
+  <table style="width:100%;margin-top:10px">
+    <thead><tr><th>Von</th><th>Bis</th><th>Notiz</th><th>Aktion</th></tr></thead>
+    <tbody id="absList">${list}</tbody>
+  </table>
+`);
+
+
+  // ➕ Hinzufügen
+  modal.querySelector('#addAbsBtn').onclick = async () => {
+    const from = modal.querySelector('#absFrom').value;
+    const to = modal.querySelector('#absTo').value;
+    const note = modal.querySelector('#absNote').value;
+    if (!from || !to) return alert('Bitte Zeitraum auswählen.');
+    user.absences.push({ from, to, note });
+    await idbPut(DB, 'users', user);
+    showToast('Abwesenheit hinzugefügt ✅');
+    // ☁️ Cloud-Sync
+try {
+  await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveAbsence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, absences: user.absences })
+  });
+} catch (err) {
+  console.warn('⚠️ Cloud-Sync fehlgeschlagen', err);
+}
+
+    closeModal();
+    openAbsenceModal();
+  };
+
+  // ❌ Löschen
+  modal.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.onclick = async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      user.absences.splice(idx, 1);
+      await idbPut(DB, 'users', user);
+      showToast('Abwesenheit gelöscht');
+      // ☁️ Cloud-Sync
+try {
+  await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveAbsence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, absences: user.absences })
+  });
+} catch (err) {
+  console.warn('⚠️ Cloud-Sync fehlgeschlagen', err);
+}
+
+      closeModal();
+      openAbsenceModal();
+    };
+  });
+}
+
+// Abwesenheiten: Admin (mit Filter) & User (nur eigene)
+async function renderAbsencePanel(filterUser = null) {
+  const users = await idbGetAll(DB, 'users');
+  if (!users || users.length === 0) return '';
+
+  let allAbsences = {};
+
+  const currentUser = STATE.currentUser;
+  const user = users.find(u => u.username === currentUser);
+  const isAdmin = user && user.role === 'Administrator';
+
+  // 🔹 Nur Admin lädt Cloud-Daten
+  if (isAdmin) {
+    try {
+      const resp = await fetch('https://timetrackr.alessandrobolte.workers.dev/api/getAbsences?username=all');
+      if (resp.ok) {
+        allAbsences = await resp.json();
+      }
+    } catch (err) {
+      console.warn('⚠️ Cloud-Live-Abfragen fehlgeschlagen:', err);
+    }
+  }
+
+  const now = new Date().toISOString().slice(0, 10);
+  const rows = [];
+
+  for (const u of users) {
+    if (filterUser && u.username !== filterUser) continue; // ⬅️ Nur eigener User, falls angegeben
+
+    const abs = isAdmin ? (allAbsences[u.username] || []) : (u.absences || []);
+    abs
+      .filter(a => a.to >= now)
+      .forEach(a => rows.push({
+        name: u.displayName,
+        from: a.from,
+        to: a.to,
+        note: a.note || ''
+      }));
+  }
+
+  rows.sort((a, b) => a.from.localeCompare(b.from));
+
+  // 📅 Hilfsfunktion für Datumsformat mit Wochentag
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr; // fallback falls ungültig
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short', // z. B. "Mi"
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+const tr = rows.map(r =>
+  `<tr>
+    ${isAdmin ? `<td>${escapeHtml(r.name)}</td>` : ''}
+    <td>${formatDateDE(r.from)}</td>
+    <td>${formatDateDE(r.to)}</td>
+    <td>${escapeHtml(r.note)}</td>
+  </tr>`
+).join('') || `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center;color:var(--muted)">Keine kommenden Abwesenheiten</td></tr>`;
+
+
+
+
+  const calendarEl = renderAbsenceCalendar(rows);
+
+  const wrapper = document.createElement('div');
+  wrapper.style.marginTop = '16px';
+  wrapper.innerHTML = `
+    <div class="stats-header" style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-weight:700">Abwesenheiten</div>
+      <div class="toggle-details" id="absencesToggle">Ausklappen ▾</div>
+    </div>
+
+    <div id="absencesContent" style="display:none;margin-top:8px">
+      <div style="font-weight:600;margin-bottom:6px">${isAdmin ? 'Kommende Abwesenheiten' : 'Meine kommenden Abwesenheiten'}</div>
+      <table style="width:100%;margin-bottom:14px">
+        <thead>
+          <tr>
+            ${isAdmin ? '<th>Benutzer</th>' : ''}
+            <th>Von</th><th>Bis</th><th>Notiz</th>
+          </tr>
+        </thead>
+        <tbody>${tr}</tbody>
+      </table>
+
+      <div style="font-weight:600;margin-bottom:6px">Monatskalender</div>
+    </div>
+  `;
+
+  const toggle = wrapper.querySelector('#absencesToggle');
+  toggle.addEventListener('click', () => {
+    const cont = wrapper.querySelector('#absencesContent');
+    const open = cont.style.display === 'block';
+    cont.style.display = open ? 'none' : 'block';
+    toggle.textContent = open ? 'Ausklappen ▾' : 'Einklappen ▴';
+  });
+
+  wrapper.querySelector('#absencesContent').appendChild(calendarEl);
+  return wrapper;
+}
+
+
+
+
+// ---------------------------
+// Monatskalender mit Hover, Klick & Feiertags-/Sonntagsmarkierung (NRW)
+// ---------------------------
+function renderAbsenceCalendar(absences) {
+  const container = document.createElement("div");
+  container.className = "absence-calendar";
+  container.dataset.year = new Date().getFullYear();
+  container.dataset.month = new Date().getMonth();
+
+  // 🟡 Feiertage NRW berechnen
+  function getHolidaysNRW(year) {
+    const holidays = new Set();
+
+    // Hilfsfunktion: Datum zu ISO-String
+    const iso = (m, d) => new Date(year, m - 1, d).toISOString().slice(0, 10);
+
+    // Fixe Feiertage
+    [
+      iso(1, 1),   // Neujahr
+      iso(5, 1),   // Tag der Arbeit
+      iso(10, 3),  // Tag der Deutschen Einheit
+      iso(12, 25), // 1. Weihnachtstag
+      iso(12, 26), // 2. Weihnachtstag
+    ].forEach(d => holidays.add(d));
+
+    // Bewegliche Feiertage (abhängig von Ostern)
+    const easter = calcEaster(year);
+    const addDays = (date, days) => {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    };
+    holidays.add(addDays(easter, -2)); // Karfreitag
+    holidays.add(addDays(easter, 1));  // Ostermontag
+    holidays.add(addDays(easter, 39)); // Christi Himmelfahrt
+    holidays.add(addDays(easter, 50)); // Pfingstmontag
+    holidays.add(addDays(easter, 60)); // Fronleichnam (NRW)
+
+    return holidays;
+  }
+
+  // Gaußsche Osterformel
+  function calcEaster(y) {
+    const C = Math.floor(y / 100);
+    const N = y - 19 * Math.floor(y / 19);
+    const K = Math.floor((C - 17) / 25);
+    const I =
+      C -
+      Math.floor(C / 4) -
+      Math.floor((C - K) / 3) +
+      19 * N +
+      15;
+    const J = I - 30 * Math.floor(I / 30);
+    const L =
+      J -
+      Math.floor(J / 28) *
+        (1 - Math.floor(J / 28) * Math.floor(29 / (J + 1)) * Math.floor((21 - N) / 11));
+    const month = 3 + Math.floor((L + 2) / 31);
+    const day = (L + 2) % 31 + 1;
+    return new Date(y, month - 1, day);
+  }
+
+  function drawCalendar(year, month) {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const today = new Date();
+    const holidays = getHolidaysNRW(year);
+
+    // Abwesenheiten vorbereiten
+    const map = {};
+    absences.forEach(a => {
+      const from = new Date(a.from);
+      const to = new Date(a.to);
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        if (!map[key]) map[key] = [];
+        map[key].push(a);
+      }
+    });
+
+    const monthName = new Date(year, month, 1).toLocaleString("de-DE", {
+      month: "long",
+      year: "numeric"
+    });
+    const weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+    const startOffset = (firstDay.getDay() + 6) % 7;
+
+    let html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <button id="prevMonth" class="small ghost">←</button>
+        <div style="font-weight:600">${monthName}</div>
+        <button id="nextMonth" class="small ghost">→</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:0.8rem;text-align:center;color:var(--muted);margin-bottom:4px">
+        ${weekdays.map(w => `<div>${w}</div>`).join("")}
+      </div>
+      <div class="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
+    `;
+
+    for (let i = 0; i < startOffset; i++) html += `<div></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const dateStr = date.toISOString().slice(0, 10);
+      const entries = map[dateStr];
+      const hasAbs = !!entries;
+      const isSunday = date.getDay() === 0;
+      const isHoliday = holidays.has(dateStr);
+
+      // Farben / Hintergründe
+      let bg = "var(--panel)";
+      let border = "1px solid rgba(0,0,0,0.05)";
+      if (isSunday || isHoliday) {
+        bg = "rgba(255, 0, 0, 0.08)";
+        border = "1px solid rgba(255, 0, 0, 0.3)";
+      }
+      if (hasAbs) {
+        bg = "rgba(255,99,71,0.15)";
+        border = "1px solid rgba(255,99,71,0.4)";
+      }
+
+      const tooltip = hasAbs
+        ? entries.map(e => `${e.name}${e.note ? ` (${e.note})` : ""}`).join(", ")
+        : isHoliday
+        ? "Feiertag (NRW)"
+        : "";
+
+      const highlight =
+        date.toDateString() === today.toDateString()
+          ? "outline:1px solid var(--accent2);"
+          : "";
+
+      html += `
+        <div class="calendar-day" 
+             data-date="${dateStr}"
+             title="${escapeHtml(tooltip)}"
+             style="background:${bg};border:${border};border-radius:8px;padding:6px;min-height:36px;position:relative;cursor:${hasAbs ? "pointer" : "default"};${highlight}">
+          <div style="font-size:0.9rem">${d}</div>
+          ${
+            hasAbs
+              ? `<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:6px;height:6px;background:tomato;border-radius:50%"></div>`
+              : ""
+          }
+        </div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+
+    // Navigation
+    container.querySelector("#prevMonth").onclick = () => {
+      let y = parseInt(container.dataset.year);
+      let m = parseInt(container.dataset.month) - 1;
+      if (m < 0) { m = 11; y--; }
+      container.dataset.year = y;
+      container.dataset.month = m;
+      drawCalendar(y, m);
+    };
+
+    container.querySelector("#nextMonth").onclick = () => {
+      let y = parseInt(container.dataset.year);
+      let m = parseInt(container.dataset.month) + 1;
+      if (m > 11) { m = 0; y++; }
+      container.dataset.year = y;
+      container.dataset.month = m;
+      drawCalendar(y, m);
+    };
+
+        // Klick auf Tag → Modal
+        container.querySelectorAll(".calendar-day[data-date]").forEach(el => {
+      el.addEventListener("click", () => {
+        const dateStr = el.dataset.date;
+        const list = map[dateStr];
+        if (!list || list.length === 0) return;
+
+        const details = list
+          .map(a => `
+            <tr>
+              <td>${escapeHtml(a.name)}</td>
+              <td>${formatDateDE(a.from)}</td>
+              <td>${formatDateDE(a.to)}</td>
+              <td>${escapeHtml(a.note || "")}</td>
+            </tr>
+          `)
+          .join("");
+
+        openModal(`
+          <h3>Abwesenheiten am ${formatDateDE(dateStr)}</h3>
+          <table style="width:100%;margin-top:8px">
+            <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+            <tbody>${details}</tbody>
+          </table>
+        `);
+      });
+    });
+  } // <-- Diese Klammer schließt drawCalendar korrekt!
+
+  // Erstellt initial den aktuellen Monat
+  drawCalendar(parseInt(container.dataset.year), parseInt(container.dataset.month));
+  return container;
+}
+
+
+
+
+
+    // ---------------------------
+    // Categories list render (with visibility & delete rules)
+    // ---------------------------
+    async function renderCategoryList(){
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      const list = document.getElementById('categoryList');
+      if(!list) return;
+      list.innerHTML='';
+      const sel = document.getElementById('activeCategorySelect');
+      if(sel) sel.innerHTML='';
+    
+      const cats = await getVisibleCategories();
+      const delMode = !isAdmin && document.getElementById('delModeBtn') && document.getElementById('delModeBtn').getAttribute('aria-pressed')==='true';
+    
+      for(const c of cats){
+        const card = document.createElement('div'); card.className='category-card'; card.dataset.id=c.id;
+        const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column';
+        const name = document.createElement('div'); name.className='category-name'; name.textContent = c.name;
+    
+        // aggregate only visible sessions
+        const visSessions = await filterSessionsForViewer(c, c.sessions||[]);
+        const totalMin = visSessions.reduce((s,x)=> s + (x.durationMin || 0),0);
+        const meta = document.createElement('div'); meta.className='category-meta';
+        meta.textContent = `${totalMin} min • ${visSessions.length} sessions`;
+    
+        left.appendChild(name); left.appendChild(meta);
+    
+        const actions = document.createElement('div');
+        actions.style.display='flex'; actions.style.alignItems='center'; actions.style.gap='8px';
+    
+        // Admin darf nichts starten/löschen außerhalb LemGOesHANA; Start ist ok für alle sichtbaren
+        const startBtnLocal = document.createElement('button');
+        startBtnLocal.className='small'; startBtnLocal.textContent='Start';
+        startBtnLocal.title='Timer für diese Kategorie starten';
+        startBtnLocal.onclick = ()=>{ const select = document.getElementById('activeCategorySelect'); if(select){ select.value = c.id; } startTimer(); };
+        actions.appendChild(startBtnLocal);
+    
+        const detailsBtn = document.createElement('button');
+        detailsBtn.className='small ghost'; detailsBtn.textContent='Details';
+        detailsBtn.onclick = ()=> showCategoryDetails(c.id);
+        actions.appendChild(detailsBtn);
+    
+        if(delMode && !c.system && c.owner === STATE.currentUser){
+          const del = document.createElement('button'); del.className='small danger'; del.textContent='Löschen';
+          del.onclick = async ()=>{
+            if(!confirm('Kategorie und alle Sitzungen löschen?')) return;
+            await idbDelete(DB,'categories',c.id);
+            renderCategoryList(); showToast('Kategorie gelöscht');
+          };
+          actions.appendChild(del);
+        }
+    
+        card.appendChild(left); card.appendChild(actions); list.appendChild(card);
+    
+        if(sel){
+          const option = document.createElement('option'); option.value=c.id; option.textContent=c.name; sel.appendChild(option);
+        }
+      }
+    }
+    
+    // ---------------------------
+    // Timer logic
+    // ---------------------------
+    async function startTimer(){
+      const sel = document.getElementById('activeCategorySelect');
+      if(!sel || !sel.value){ alert('Bitte eine Kategorie anlegen und auswählen.'); return; }
+      const active = JSON.parse(localStorage.getItem('zm_active') || 'null');
+      if(active && active.username === STATE.currentUser){ alert('Es läuft bereits ein Timer.'); return; }
+      const start = Date.now();
+      const entry = { id: uid(), username: STATE.currentUser, start, durationMin:null, note:'', categoryId: sel.value };
+      localStorage.setItem('zm_active', JSON.stringify(entry));
+      showToast('Timer gestartet');
+    }
+    async function stopTimer(){
+      const raw = localStorage.getItem('zm_active'); if(!raw){ alert('Kein laufender Timer.'); return; }
+      const a = JSON.parse(raw);
+      if(a.username !== STATE.currentUser){ alert('Ein anderer Benutzer hat einen laufenden Timer im Browser.'); return; }
+      const durMin = Math.max(1, Math.round((Date.now() - a.start)/60000));
+      // Session-Details wie im Dashboard
+      const note = prompt('Kurze Beschreibung (optional):') || '';
+    
+      // store into category sessions (respect visibility rules by writing but UI filters on read)
+      const cat = await idbGet(DB,'categories',a.categoryId);
+      if(!cat){ alert('Kategorie nicht gefunden'); localStorage.removeItem('zm_active'); return; }
+      // Admin soll nicht in fremden Kategorien schreiben können (nur LemGOesHANA)
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      if(isAdmin && !cat.system){
+        alert('Admin kann nur in LemGOesHANA Zeiten erfassen.'); localStorage.removeItem('zm_active'); return;
+      }
+    
+      cat.sessions = cat.sessions || [];
+      cat.sessions.push({ id: a.id, username: a.username, durationMin: durMin, note });
+      await idbPut(DB,'categories',cat);
+      // ---- Cloudflare Worker Sync ----
+try {
+  await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveSession", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: STATE.currentUser,
+      id: a.id,
+      category: cat.name,
+      durationMin: durMin,
+      note: note || ''
+    })
+  });
+  console.log("✅ Session an Cloudflare gesendet");
+} catch (err) {
+  console.warn("⚠️ Konnte Session nicht an Worker senden:", err);
+}
+      localStorage.removeItem('zm_active');
+      showToast('Zeit gestoppt ✓'); renderDashboard();
+    }
+    
+    // keep display ticking
+    setInterval(()=>{
+      const raw=localStorage.getItem('zm_active'); const disp = document.getElementById('activeTimerDisplay');
+      if(raw){
+        try{
+          const a=JSON.parse(raw); const ms = Date.now() - a.start;
+          if(disp) disp.textContent = msToHms(ms);
+        }catch(e){ if(disp) disp.textContent='--:--:--'; }
+      } else if(disp) disp.textContent='--:--:--';
+    },500);
+    
+    // ---------------------------
+    // Manual entry modal (only duration)
+    // ---------------------------
+    async function openManualModal(){
+      const catsVisible = await getVisibleCategories();
+      // Nur in Kategorien erfassen, in die der User schreiben darf:
+      // User: eigene + LemGOesHANA; Admin: nur LemGOesHANA
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      const catsWritable = catsVisible.filter(c => isAdmin ? c.system : true);
+    
+      const selOptions = catsWritable.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      const modal = openModal(
+        `<h3>Manuelles Nachtragen</h3>
+         <div style="margin-top:8px"><label>Kategorie</label><select id="mcat">${selOptions}</select></div>
+         <div style="margin-top:8px"><label>Dauer (Stunden)</label><input id="mhours" type="number" min="0" value="0" /> 
+           <label style="margin-left:8px">Minuten</label><input id="mmins" type="number" min="0" max="59" value="30" /></div>
+         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+           <button id="madd" class="accent">Hinzufügen</button><button id="mclose" class="small">Abbrechen</button>
+         </div>`
+      );
+      modal.querySelector('#mclose').onclick = ()=> closeModal();
+      modal.querySelector('#madd').onclick = async ()=>{
+        const catId = modal.querySelector('#mcat').value; const h = parseInt(modal.querySelector('#mhours').value||'0',10); const m = parseInt(modal.querySelector('#mmins').value||'0',10);
+        const dur = h*60 + m; if(dur<=0){ alert('Bitte Dauer angeben.'); return; }
+        const note = prompt('Kurze Beschreibung (optional):') || '';
+        const cat = await idbGet(DB,'categories',catId); cat.sessions = cat.sessions || [];
+        cat.sessions.push({id: uid(), username: STATE.currentUser, durationMin: dur, note});
+        await idbPut(DB,'categories',cat);
+        closeModal(); showToast('Manuelle Zeit hinzugefügt'); renderDashboard();
+      };
+    }
+    
+    // ---------------------------
+    // Category details (visibility-safe)
+    // ---------------------------
+    async function showCategoryDetails(id) {
+  const user = await idbGet(DB, 'users', STATE.currentUser);
+  const isAdmin = user.role === 'Administrator';
+  const c = await idbGet(DB, 'categories', id);
+  if (!c) return;
+
+  // 🔒 Sichtbarkeit prüfen
+  if (isAdmin) {
+    // Admin darf nur LemGOesHANA ansehen
+    if (!c.system || c.name !== NON_DELETABLE_CATEGORY_NAME) {
+      alert('Admin darf nur LemGOesHANA ansehen.');
+      return;
+    }
+  } else {
+    // User darf eigene Kategorien und eigene Sessions in LemGOesHANA sehen
+    const isOwn = c.owner === STATE.currentUser;
+    const isLemGO = c.system && c.name === NON_DELETABLE_CATEGORY_NAME;
+    if (!isOwn && !isLemGO) {
+      alert('Nicht berechtigt.');
+      return;
+    }
+  }
+
+  // 🔢 Sessions + Usernamen vorbereiten
+  const sessions = await filterSessionsForViewer(c, c.sessions || []);
+  const allUsers = await idbGetAll(DB, 'users');
+  const userMap = {};
+  for (const u of allUsers) userMap[u.username] = u.displayName;
+
+  const rows = sessions
+    .map(
+      (s, idx) => `
+      <tr>
+        <td>${escapeHtml(userMap[s.username] || s.username)}</td>
+        <td>${minutesToHuman(s.durationMin || 0)}</td>
+        <td contenteditable="${isAdmin ? 'false' : 'true'}" data-idx="${idx}">
+          ${escapeHtml(s.note || '')}
+        </td>
+        ${isAdmin ? '' : `<td><button data-idx="${idx}" class="small">Löschen</button></td>`}
+      </tr>`
+    )
+    .join('');
+
+  const modal = openModal(`
+    <h3>Details — ${escapeHtml(c.name)}</h3>
+    <div style="max-height:320px;overflow:auto;margin-top:8px">
+      <table style='width:100%'>
+        <thead>
+          <tr>
+            <th>Benutzer</th><th>Dauer</th><th>Notiz</th>${isAdmin ? '' : '<th>Aktion</th>'}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-top:6px">
+      ${
+        isAdmin
+          ? 'Admin-Ansicht: nur LemGOesHANA, alle Sessions sichtbar.'
+          : 'Notizen sind editierbar. Eigene Sessions kannst du löschen.'
+      }
+    </div>
+  `);
+
+  // 📝 Notizen editieren
+  if (!isAdmin) {
+    modal.querySelectorAll('td[contenteditable="true"]').forEach(td => {
+      td.addEventListener('blur', async () => {
+        const idx = parseInt(td.dataset.idx, 10);
+        const visible = await filterSessionsForViewer(c, c.sessions || []);
+        const sVisible = visible[idx];
+        if (!sVisible) return;
+        const realIdx = (c.sessions || []).findIndex(r => r.id === sVisible.id);
+        if (realIdx >= 0) {
+          c.sessions[realIdx].note = td.textContent.trim();
+          await idbPut(DB, 'categories', c);
+        }
+      });
+    });
+
+    // ❌ Eigene Sessions löschen (lokal + Cloud)
+    modal.querySelectorAll('button.small').forEach(b => {
+      b.addEventListener('click', async () => {
+        const idx = parseInt(b.dataset.idx, 10);
+        const visible = await filterSessionsForViewer(c, c.sessions || []);
+        const sVisible = visible[idx];
+        if (!sVisible) return;
+
+        if (sVisible.username !== STATE.currentUser) {
+          alert('Du kannst nur eigene Sessions löschen.');
+          return;
+        }
+
+        if (!confirm('Session wirklich löschen?')) return;
+
+       // 🔧 ID-basiertes Löschen (auch für system-Kategorien wie LemGOesHANA)
+let cat = await idbGet(DB, 'categories', c.id);
+if (!cat || !cat.sessions) return;
+
+// Falls system-Kategorie (z. B. LemGOesHANA), lokale Kopie aller Sessions laden
+if (cat.system) {
+  cat.sessions = (cat.sessions || []).filter(
+    s => !(s.id === sVisible.id && s.username === STATE.currentUser)
+  );
+} else {
+  cat.sessions = (cat.sessions || []).filter(s => s.id !== sVisible.id);
+}
+
+await idbPut(DB, 'categories', cat);
+
+
+        // 🌩️ Cloudflare-Sync: Session aus KV löschen
+        try {
+          await fetch('https://timetrackr.alessandrobolte.workers.dev/api/deleteSession', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: STATE.currentUser,
+              id: sVisible.id
+            })
+          });
+          console.log('🗑️ Session auch in Cloud gelöscht');
+        } catch (err) {
+          console.warn('⚠️ Cloud-Delete fehlgeschlagen:', err);
+        }
+
+        // 🔁 UI aktualisieren
+        showToast('Session gelöscht');
+        closeModal();
+        renderDashboard();
+      });
+    });
+  }
+}
+
+    
+    // ---------------------------
+    // Admin view (keine separate UI mehr nötig – Details nutzt Regeln)
+    // ---------------------------
+    
+    // ---------------------------
+    // CSV Export/Import (export respektiert Sichtbarkeit beim Lesen)
+    // ---------------------------
+    async function exportCSV(){
+      const cats = await getVisibleCategories();
+      const rows=['category,categoryId,username,durationMin,note'];
+      const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) {
+  userMap[u.username] = u.displayName;
+}
+      for(const c of cats){
+        const vis = await filterSessionsForViewer(c, c.sessions||[]);
+        vis.forEach(s=>{
+  const name = userMap[s.username] || s.username;   // 🔁 Anzeigename statt Username
+  rows.push(`${escapeCsv(c.name)},${c.id},${escapeCsv(name)},${s.durationMin||''},${escapeCsv(s.note||'')}`);
+});
+      }
+      downloadBlob(rows.join('\n'),'zeitmanagement_export.csv');
+    }
+    // ---------------------------
+// Admin Cloud View (LemGOesHANA aus Cloudflare)
+// ---------------------------
+async function showAdminView() {
+  if (STATE.currentUser !== "admin") {
+    alert("Nur Admins dürfen diese Ansicht öffnen.");
+    return;
+  }
+
+  try {
+    const res = await fetch("https://timetrackr.alessandrobolte.workers.dev/api/getSessions?username=all");
+    if (!res.ok) throw new Error("Fehler beim Abrufen der Cloud-Daten");
+    const allSessions = await res.json();
+
+    if (!Array.isArray(allSessions) || allSessions.length === 0) {
+      alert("Keine LemGOesHANA-Sessions in der Cloud gefunden.");
+      return;
+    }
+
+    // Nur LemGOesHANA-Sessions
+    const filtered = allSessions.filter(s => s.category === "LemGOesHANA");
+
+    // Alle Benutzer ermitteln
+    const users = [...new Set(filtered.map(s => s.username))].sort();
+    users.unshift("Alle Benutzer");
+
+    // Modal öffnen mit Dropdown + Platz für Summenzeile
+    openModal(`
+      <h3>LemGOesHANA — Cloud Sessions (Admin-Ansicht)</h3>
+      <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
+        <label for="userFilter" style="color:var(--muted)">Benutzer:</label>
+        <select id="userFilter" class="small">
+          ${users.map(u => `<option value="${u}">${u}</option>`).join("")}
+        </select>
+        <button id="exportCloudBtn" class="small accent" style="margin-left:auto">Export (CSV)</button>
+      </div>
+      <div style="max-height:420px;overflow:auto;margin-top:8px">
+        <table style="width:100%" id="adminSessionsTable">
+          <thead>
+            <tr><th>Benutzer</th><th>Dauer</th><th>Notiz</th><th>Zeitpunkt</th></tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot><tr id="summaryRow"><td colspan="4" style="text-align:right;color:var(--muted);font-weight:600;padding-top:6px"></td></tr></tfoot>
+        </table>
+      </div>
+    `);
+
+    const tbody = document.querySelector("#adminSessionsTable tbody");
+    const summary = document.querySelector("#summaryRow td");
+    const filterSelect = document.getElementById("userFilter");
+// Nutzernamen auf Anzeigenamen mappen
+const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) userMap[u.username] = u.displayName;
+    // Render-Funktion
+    function renderTable(selectedUser) {
+      const visible = filtered.filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser);
+      let rows = visible
+        .map(
+          s => `
+          <tr>
+            <td>${escapeHtml(userMap[s.username] || s.username)}</td>
+            <td>${minutesToHuman(s.durationMin || 0)}</td>
+            <td>${escapeHtml(s.note || "")}</td>
+            <td>${new Date(s.timestamp).toLocaleString("de-DE")}</td>
+          </tr>`
+        )
+        .join("");
+
+      if (!rows)
+        rows = `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Einträge</td></tr>`;
+      tbody.innerHTML = rows;
+
+      // Summenzeile berechnen
+      const totalMin = visible.reduce((sum, s) => sum + (s.durationMin || 0), 0);
+      summary.textContent =
+        totalMin > 0
+          ? `Summe: ${minutesToHuman(totalMin)} (${totalMin} min)`
+          : "Keine Zeiten vorhanden";
+    }
+
+    // Initial render
+    renderTable("Alle Benutzer");
+
+    // Filter-Änderung
+    filterSelect.addEventListener("change", e => renderTable(e.target.value));
+
+    // CSV-Export
+    document.getElementById("exportCloudBtn").addEventListener("click", () => {
+      const selectedUser = filterSelect.value;
+      const rows = filtered.filter(s => selectedUser === "Alle Benutzer" || s.username === selectedUser);
+      const csv = ["username,durationMin,note,timestamp"];
+      rows.forEach(s =>
+        csv.push(`${escapeCsv(s.username)},${s.durationMin || 0},${escapeCsv(s.note || "")},${new Date(s.timestamp).toISOString()}`)
+      );
+      downloadBlob(csv.join("\n"), `lemgoeshana_${selectedUser === "Alle Benutzer" ? "all" : selectedUser}.csv`);
+    });
+  } catch (err) {
+    console.error("❌ Fehler in showAdminView:", err);
+    alert("Fehler beim Abrufen der Cloud-Daten.");
+  }
+}
+
+
+
+    function downloadBlob(text, name){ const blob = new Blob([text],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+    function escapeCsv(t){ if(t==null) return ''; const s=String(t); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"'; return s; }
+    function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    // 🔧 Wandelt Timestamp in "vor X Tagen/Stunden" um
+function timeAgo(timestamp) {
+  if (!timestamp) return '-';
+  const diffMs = Date.now() - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffDay > 0) return `vor ${diffDay} Tag${diffDay > 1 ? 'en' : ''}`;
+  if (diffHr > 0) return `vor ${diffHr} Stunde${diffHr > 1 ? 'n' : ''}`;
+  if (diffMin > 1) return `vor ${diffMin} Minuten`;
+  return 'gerade eben';
+}
+// 🧮 Summiert alle Sessions dieser Woche (über alle Kategorien)
+async function getWeeklyTotalMinutes() {
+  const cats = await idbGetAll(DB, 'categories');
+  if (!cats) return 0;
+
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Montag
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  let total = 0;
+  for (const c of cats) {
+    for (const s of (c.sessions || [])) {
+      if (!s.timestamp) continue;
+      const t = new Date(s.timestamp);
+      if (t >= startOfWeek) total += s.durationMin || 0;
+    }
+  }
+  return total;
+}
+
+// 🕒 Formatiert Minuten in "Xh Ym"
+function formatMinutes(min) {
+  if (!min || min <= 0) return '0 h 0 min';
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return `${h} h ${m.toString().padStart(2,'0')} min`;
+}
+
+    async function parseImportCSV(txt){
+      const lines = txt.split(/\r?\n/).filter(Boolean); if(lines.length<=1){ alert('Keine Daten in CSV gefunden'); return; } lines.shift();
+      const user = await idbGet(DB,'users',STATE.currentUser);
+      const isAdmin = user.role==='Administrator';
+      for(const line of lines){
+        const parts = csvSplit(line); if(parts.length<5) continue;
+        const catName = parts[0]; const catIdCsv = parts[1]; const username = parts[2] || STATE.currentUser; const dur = parts[3] ? parseInt(parts[3],10):0; const note = parts[4]||'';
+        let cats = await idbGetAll(DB,'categories');
+        let cat = cats.find(c=> c.id===catIdCsv) || cats.find(c=> c.name===catName);
+        if(!cat){
+          // Admin importiert nur nach LemGOesHANA; User importiert in eigene Kategorien
+          if(isAdmin){
+            cat = cats.find(c=> c.system) || {id:uid(),name:NON_DELETABLE_CATEGORY_NAME,owner:'system',system:true,sessions:[]};
+          } else {
+            cat = {id:uid(),name:catName,owner:STATE.currentUser,system:false,sessions:[]};
+          }
+          await idbPut(DB,'categories',cat);
+        }
+        // Schreibschutz: Admin nur in LemGOesHANA
+        if(isAdmin && !cat.system) continue;
+        cat.sessions = cat.sessions || [];
+        cat.sessions.push({id: uid(), username: STATE.currentUser, durationMin: dur, note});
+        await idbPut(DB,'categories',cat);
+      }
+      showToast('CSV importiert ✅'); renderDashboard();
+    }
+    function csvSplit(line){
+      const out=[]; let cur=''; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(inQ){
+          if(ch==='"' && line[i+1]==='"'){ cur+='"'; i++; }
+          else if(ch==='"'){ inQ=false; }
+          else cur+=ch;
+        } else {
+          if(ch===','){ out.push(cur); cur=''; }
+          else if(ch==='"'){ inQ=true; }
+          else cur+=ch;
+        }
+      }
+      out.push(cur); return out;
+    }
+    
+    // ---------------------------
+    // Stats & charts (respecting visibility)
+    // ---------------------------
+    let currentRange='7';
+    async function renderStats(){
+      const table = document.querySelector('#statsTable tbody'); const sessionsTable = document.querySelector('#sessionsTable tbody');
+      if(!table) return;
+    
+      const cats = await getVisibleCategories();
+      const agg = [];
+      for(const c of cats){
+        const vis = await filterSessionsForViewer(c, c.sessions||[]);
+        let totalMin=0; let sessions=0;
+        vis.forEach(s=>{ const dur = s.durationMin || 0; totalMin += dur; if(dur>0) sessions++; });
+        // days/perDay/perWeek sind Schätzwerte wie zuvor
+        const days = 30; const perDay = totalMin/days; const perWeek = totalMin/7;
+        agg.push({id:c.id,name:c.name,totalMin,perDay,perWeek,sessions});
+      }
+    
+      table.innerHTML = '';
+      agg.forEach(a=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(a.name)}</td><td>${minutesToHuman(Math.round(a.totalMin))}</td><td>${Math.round(a.perDay)} min</td><td>${Math.round(a.perWeek)} min</td><td>${a.sessions}</td>`;
+        table.appendChild(tr);
+      });
+    
+      // sessions list (flatten)
+// Nutzer-Mapping vorbereiten
+const allUsers = await idbGetAll(DB, 'users');
+const userMap = {};
+for (const u of allUsers) userMap[u.username] = u.displayName;
+
+// Sessions aufbereiten
+const all = [];
+for (const c of cats) {
+  const vis = await filterSessionsForViewer(c, c.sessions || []);
+  vis.forEach(s =>
+    all.push({
+      cat: c.name,
+      dur: s.durationMin,
+      note: s.note,
+      user: userMap[s.username] || s.username
+    })
+  );
+}
+
+// Tabelle ausgeben
+sessionsTable.innerHTML = all
+  .map(
+    s => `<tr>
+      <td>${escapeHtml(s.user || '')}</td>
+      <td>${escapeHtml(s.cat)}</td>
+      <td>${minutesToHuman(s.dur)}</td>
+      <td>${escapeHtml(s.note || '')}</td>
+    </tr>`
+  )
+  .join('');
+
+    
+      drawBarChart(); drawLineChart();
+    }
+    
+ // ---------------------------
+// Echte BarChart-Daten
+// ---------------------------
+function drawBarChart(){
+  const ctx = document.getElementById('barChart');
+  if(!ctx || !STATE.currentUser) return;
+
+  idbGetAll(DB,'categories').then(async cats=>{
+    const currentUser = await idbGet(DB, 'users', STATE.currentUser);
+    const isAdmin = currentUser && currentUser.role === 'Administrator';
+    const data = [];
+
+    for(const cat of cats){
+      if(!cat.sessions || cat.sessions.length === 0) continue;
+
+      let sessions = [];
+      if(isAdmin) {
+        // Admin sieht nur LemGOesHANA
+        if (cat.system && cat.name === NON_DELETABLE_CATEGORY_NAME) {
+          sessions = cat.sessions;
+        }
+      } else {
+        // User sieht eigene Kategorien + LemGOesHANA
+        if (cat.owner === STATE.currentUser || cat.system) {
+          sessions = cat.sessions.filter(s => s.username === STATE.currentUser);
+        }
+      }
+
+      if (sessions.length === 0) continue;
+
+      const totalMin = sessions.reduce((sum,s)=> sum + (s.durationMin||0), 0);
+      data.push({ name: cat.name, totalMin });
+    }
+
+    // Falls keine Daten vorhanden
+    const c = ctx.getContext('2d');
+    c.clearRect(0,0,ctx.width,ctx.height);
+    if(data.length === 0){
+      c.font = '16px sans-serif';
+      c.fillStyle = '#888';
+      c.fillText('Keine Daten vorhanden', 20, 30);
+      return;
+    }
+
+    // Zeichnung vorbereiten
+    const margin = 40;
+    const w = ctx.width - margin*2;
+    const h = ctx.height - margin*2;
+    const maxVal = Math.max(...data.map(d=>d.totalMin));
+    const barWidth = w / data.length * 0.6;
+    const step = w / data.length;
+
+    // Achsen
+    c.strokeStyle = '#ccc';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(margin, margin);
+    c.lineTo(margin, margin + h);
+    c.lineTo(margin + w, margin + h);
+    c.stroke();
+
+    // Balken
+    c.fillStyle = '#2563eb';
+    data.forEach((d,i)=>{
+      const x = margin + i * step + step * 0.2;
+      const y = margin + h - (d.totalMin / maxVal) * h;
+      const barH = (d.totalMin / maxVal) * h;
+      c.fillRect(x, y, barWidth, barH);
+
+      // Wert anzeigen
+      c.fillStyle = '#333';
+      c.font = '11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText(`${Math.round(d.totalMin)}m`, x + barWidth/2, y - 4);
+      c.fillStyle = '#2563eb';
+    });
+
+    // Kategorien-Beschriftung
+    c.fillStyle = '#444';
+    c.font = '11px sans-serif';
+    c.textAlign = 'center';
+    data.forEach((d,i)=>{
+      const x = margin + i * step + step * 0.2 + barWidth/2;
+      const y = margin + h + 14;
+      c.fillText(d.name, x, y);
+    });
+
+    // Titel
+    c.fillStyle = '#444';
+    c.font = '13px sans-serif';
+    c.textAlign = 'left';
+    c.fillText('Zeit pro Kategorie (Minuten)', margin, margin - 10);
+  });
+}
+
+
+    function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+    function getCssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#fff'; }
+    
+// ---------------------------
+// Echte LineChart-Daten
+// ---------------------------
+function drawLineChart(){
+  const ctx = document.getElementById('lineChart');
+  if(!ctx || !STATE.currentUser) return;
+
+  // Hole alle Kategorien des aktuellen Benutzers
+  idbGetAll(DB,'categories').then(cats=>{
+    // Sessions dieses Users (und ggf. LemGOesHANA) einsammeln
+    const sessions = [];
+    cats.forEach(cat=>{
+      if(cat.system && STATE.currentUser !== 'admin') return; // Nur Admin sieht alle Systemdaten
+      if(cat.sessions){
+        for(const s of cat.sessions){
+          if(s.username === STATE.currentUser || STATE.currentUser === 'admin'){
+            sessions.push({
+              category: cat.name,
+              durationMin: s.durationMin || 0,
+              timestamp: s.timestamp || Date.now()
+            });
+          }
+        }
+      }
+    });
+
+    if(sessions.length === 0){
+      const c = ctx.getContext('2d');
+      c.clearRect(0,0,ctx.width,ctx.height);
+      c.font = '16px sans-serif';
+      c.fillStyle = '#888';
+      c.fillText('Keine Daten vorhanden', 20, 30);
+      return;
+    }
+
+    // Gruppiere nach Datum
+    const dailyTotals = {};
+    for(const s of sessions){
+      const date = new Date(s.timestamp);
+      const key = date.toISOString().substring(0,10);
+      dailyTotals[key] = (dailyTotals[key] || 0) + s.durationMin;
+    }
+
+    // Sortiere chronologisch
+    const dates = Object.keys(dailyTotals).sort();
+    const values = dates.map(d=> dailyTotals[d]);
+
+    // Canvas vorbereiten
+    const c = ctx.getContext('2d');
+    c.clearRect(0,0,ctx.width,ctx.height);
+
+    // Achsen / Linien
+    const margin = 40;
+    const w = ctx.width - margin*2;
+    const h = ctx.height - margin*2;
+    const maxVal = Math.max(...values);
+    const yScale = maxVal>0 ? h/maxVal : 1;
+    const xStep = w / Math.max(1, dates.length-1);
+
+    // Achsen zeichnen
+    c.strokeStyle = '#ccc';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(margin, margin);
+    c.lineTo(margin, margin+h);
+    c.lineTo(margin+w, margin+h);
+    c.stroke();
+
+    // Datenlinie
+    c.strokeStyle = '#4f46e5';
+    c.lineWidth = 2;
+    c.beginPath();
+    values.forEach((v,i)=>{
+      const x = margin + i*xStep;
+      const y = margin + h - v*yScale;
+      if(i===0) c.moveTo(x,y); else c.lineTo(x,y);
+    });
+    c.stroke();
+
+    // Punkte
+    c.fillStyle = '#4f46e5';
+    values.forEach((v,i)=>{
+      const x = margin + i*xStep;
+      const y = margin + h - v*yScale;
+      c.beginPath();
+      c.arc(x, y, 3, 0, 2*Math.PI);
+      c.fill();
+    });
+
+    // Achsenbeschriftung (Datum unten)
+    c.fillStyle = '#666';
+    c.font = '11px sans-serif';
+    dates.forEach((d,i)=>{
+      const x = margin + i*xStep - 15;
+      const y = margin + h + 15;
+      c.fillText(d.slice(5), x, y);
+    });
+
+    // Titel / Einheiten
+    c.fillStyle = '#444';
+    c.font = '13px sans-serif';
+    c.fillText('Tägliche Gesamtzeit (min)', margin, margin - 10);
+  });
+}
+
+    
+    // ---------------------------
+    // Modals
+    // ---------------------------
+    function openModal(innerHTML){
+      closeModal();
+      const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
+      const modal = document.createElement('div'); modal.className='modal';
+      modal.innerHTML = innerHTML + `<div style="text-align:right;margin-top:8px"><button id="closeModal" class="small">Schließen</button></div>`;
+      backdrop.appendChild(modal); document.getElementById('modalRoot').appendChild(backdrop);
+      backdrop.querySelector('#closeModal').onclick = ()=> closeModal();
+      return modal;
+    }
+    function closeModal(){ const root=document.getElementById('modalRoot'); root.innerHTML=''; }
+    
+    // ---------------------------
+    // startup + Auto-Login (Variante 2)
+    // ---------------------------
+    init();
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      const lastUser = localStorage.getItem('zm_lastUser');
+      if(lastUser){
+        const user = await idbGet(DB,'users',lastUser);
+        if(user){
+          STATE.currentUser = user.username;
+          //document.getElementById('greeting').textContent = 'Hallo ' + user.displayName + ' 👋';
+          document.getElementById('logoutBtn').style.display='inline-block';
+          if(user.pwExpired){
+            renderChangePassword(true);
+          } else {
+            renderDashboard();
+          }
+        }
+      }
+    });
+    
+    // ---------------------------
+    // Timer abdocken / Mini-Fenster (Popup mit Theme & Kategorien)
+   // ---------------------------
+// Timer abdocken / Mini-Fenster (finale stabile Version)
+// ---------------------------
+let miniWin = null;
+
+async function openMiniTimerWindow() {
+  // Wenn bereits offen, fokussieren
+  if (miniWin && !miniWin.closed) {
+    miniWin.focus();
+    return;
+  }
+
+  const features = "width=320,height=220,resizable=no,scrollbars=no";
+  miniWin = window.open("", "miniTimer", features);
+
+  if (!miniWin) {
+    alert("Popup blockiert. Bitte Popups erlauben.");
+    return;
+  }
+
+  // Theme übernehmen
+  const isDark = document.documentElement.classList.contains("dark");
+
+  // HTML + Styles schreiben
+  miniWin.document.open();
+  miniWin.document.write(`<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Timer</title>
+        <style>
+          #dashboardSubtitle {
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+          :root {
+            --bg: #f3f4f6; --text: #0b1220; --panel: #ffffff;
+            --muted: #425066; --ok: #28a745; --err: #ff4d4f;
+          }
+          :root.dark {
+            --bg: #0b0b0c; --text: #e8e8e8; --panel: #0f1112;
+            --muted: #9aa0a6;
+          }
+          body {
+            font-family: system-ui, Segoe UI, Roboto, Arial;
+            background: var(--bg); color: var(--text);
+            margin: 0; padding: 14px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+          }
+          #time { font-size: 2rem; font-weight: bold; margin: 10px 0; }
+          select, button {
+            padding: 6px 10px; border-radius: 6px; font-size: 0.95rem;
+          }
+          select {
+            width: 100%; margin-bottom: 10px;
+            background: var(--panel); color: var(--text);
+            border: 1px solid rgba(0,0,0,0.15);
+          }
+          button {
+            cursor: pointer; border: none;
+            margin: 2px; color: #fff;
+          }
+          .start { background: var(--ok); }
+          .stop { background: var(--err); }
+          #status { font-size: 0.9rem; color: var(--muted); }
+        </style>
+      </head>
+      <body>
+        <select id="catSelect"></select>
+        <div id="status">Gestoppt</div>
+        <div id="time">--:--:--</div>
+        <div>
+          <button id="startBtn" class="start">Start</button>
+          <button id="stopBtn" class="stop">Stop</button>
+        </div>
+      </body>
+    </html>`);
+  miniWin.document.close();
+
+  // Theme übernehmen
+  miniWin.document.documentElement.classList.toggle("dark", isDark);
+
+  // Inhalt erst nach vollständigem Laden ansprechen
+  miniWin.addEventListener(
+    "load",
+    async () => {
+      try {
+        // 🔹 Datenbank sicher öffnen
+        if (!DB) DB = await openDB("zm_db", 1);
+
+        // 🔹 Benutzer & Rollen abfragen
+        const user = await idbGet(DB, "users", STATE.currentUser);
+        const isAdmin = user && user.role === "Administrator";
+
+        // 🔹 Kategorien laden und Dropdown füllen
+        const cats = await idbGetAll(DB, "categories");
+        const sel = miniWin.document.getElementById("catSelect");
+        cats
+          .filter((c) => {
+            if (isAdmin) return c.name === NON_DELETABLE_CATEGORY_NAME;
+            return (
+              c.owner === STATE.currentUser ||
+              c.name === NON_DELETABLE_CATEGORY_NAME
+            );
+          })
+          .forEach((c) => {
+            const opt = miniWin.document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+          });
+
+        // 🟢 Timer starten
+        miniWin.document.getElementById("startBtn").addEventListener("click", () => {
+          const chosen = sel.value;
+          if (!chosen) {
+            alert("Bitte eine Kategorie auswählen.");
+            return;
+          }
+          const active = JSON.parse(localStorage.getItem("zm_active") || "null");
+          if (active && active.username === STATE.currentUser) {
+            alert("Es läuft bereits ein Timer.");
+            return;
+          }
+          const entry = {
+            id: uid(),
+            username: STATE.currentUser,
+            start: Date.now(),
+            durationMin: null,
+            note: "",
+            categoryId: chosen,
+          };
+          localStorage.setItem("zm_active", JSON.stringify(entry));
+          showToast("Timer gestartet");
+        });
+
+        // 🔴 Timer stoppen mit Notiz
+        miniWin.document.getElementById("stopBtn").addEventListener("click", async () => {
+          if (!DB) DB = await openDB("zm_db", 1);
+          const raw = localStorage.getItem("zm_active");
+          if (!raw) {
+            alert("Kein laufender Timer.");
+            return;
+          }
+          const a = JSON.parse(raw);
+          if (a.username !== STATE.currentUser) {
+            alert("Dieser Timer gehört einem anderen Benutzer.");
+            return;
+          }
+          const durMin = Math.max(1, Math.round((Date.now() - a.start) / 60000));
+          const note = miniWin.prompt("Kurze Beschreibung (optional):") || "";
+          const catId = sel.value || a.categoryId;
+          const cat = await idbGet(DB, "categories", catId);
+          if (!cat) {
+            alert("Kategorie nicht gefunden.");
+            localStorage.removeItem("zm_active");
+            return;
+          }
+          cat.sessions = cat.sessions || [];
+          cat.sessions.push({
+            id: a.id,
+            username: a.username,
+            durationMin: durMin,
+            note,
+          });
+          await idbPut(DB, "categories", cat);
+          localStorage.removeItem("zm_active");
+          showToast("Zeit gestoppt ✓");
+          renderDashboard();
+          await saveSessionToCloud({
+  id: a.id,
+  username: a.username,
+  category: cat.name,
+  durationMin: durMin,
+  note,
+});
+        });
+
+        // 🔁 Live-Update der Anzeige im Popup
+        const statusEl = miniWin.document.getElementById("status");
+        const timeEl = miniWin.document.getElementById("time");
+        const ticker = setInterval(() => {
+          if (!miniWin || miniWin.closed) {
+            clearInterval(ticker);
+            miniWin = null;
+            return;
+          }
+          const raw = localStorage.getItem("zm_active");
+          let text = "--:--:--";
+          if (raw) {
+            try {
+              const a = JSON.parse(raw);
+              if (a.username === STATE.currentUser) {
+                text = msToHms(Date.now() - a.start);
+                statusEl.textContent = "Läuft";
+              } else {
+                statusEl.textContent = "Gestoppt";
+              }
+            } catch {
+              text = "--:--:--";
+              statusEl.textContent = "Fehler";
+            }
+          } else {
+            statusEl.textContent = "Gestoppt";
+          }
+          timeEl.textContent = text;
+        }, 500);
+      } catch (err) {
+        console.error("MiniTimer Fehler:", err);
+      }
+    },
+    { once: true }
+  );
+}
+
+    
+    // ---------------------------
+    // helpers (CSV/html already above)
+    // ---------------------------
+    // ---------------------------
+// Admin-Tools: Passwort-Reset & neuen Benutzer hinzufügen
+// ---------------------------
+
+// Einzelnes Benutzerpasswort auf Initialwert zurücksetzen
+async function resetUserPassword() {
+  const allUsers = await idbGetAll(DB, 'users');
+  if (!allUsers || allUsers.length === 0) {
+    alert('Keine Benutzer gefunden.');
+    return;
+  }
+
+  const usernames = allUsers.map(u => u.username);
+  const name = prompt(
+    `Welches Benutzerkonto soll zurückgesetzt werden?\n\nVerfügbare Benutzer:\n${usernames.join(', ')}`
+  );
+  if (!name) return;
+
+  const user = allUsers.find(u => u.username === name.trim());
+  if (!user) {
+    alert('Benutzer nicht gefunden.');
+    return;
+  }
+
+  const confirmReset = confirm(
+    `Passwort von "${user.displayName}" (${user.username}) auf das Initialpasswort "Stadtwerke1" zurücksetzen?`
+  );
+  if (!confirmReset) return;
+
+  user.password = 'Stadtwerke1';
+  user.pwExpired = true;
+  await idbPut(DB, 'users', user);
+  showToast(`Passwort für ${user.displayName} wurde zurückgesetzt.`);
+}
+
+// Neuen Benutzer hinzufügen
+async function addNewUser() {
+  const username = prompt('Benutzername (Login-Name, klein geschrieben):');
+  if (!username) return;
+
+  const existing = await idbGet(DB, 'users', username);
+  if (existing) {
+    alert('Dieser Benutzername existiert bereits.');
+    return;
+  }
+
+  const displayName = prompt('Anzeigename (z. B. "Max Mustermann"):') || username;
+  const role = confirm('Soll der Benutzer Administratorrechte haben?')
+    ? 'Administrator'
+    : 'User';
+
+  const newUser = {
+    username,
+    password: 'Stadtwerke1',
+    displayName,
+    role,
+    pwExpired: true
+  };
+
+  await idbPut(DB, 'users', newUser);
+  showToast(`Neuer Benutzer "${displayName}" angelegt (Initialpasswort: Stadtwerke1).`);
+}
+// ---------------------------
+// Admin: Benutzerverwaltung (Dropdown + Reset/Add)
+// ---------------------------
+
+// Dropdown mit Benutzern befüllen
+async function populateUserDropdown() {
+  const users = await idbGetAll(DB, 'users');
+  const sel = document.getElementById('userSelect');
+  if (!sel) return;
+  sel.innerHTML = users
+    .map(u => `<option value="${u.username}">${u.displayName} (${u.username})</option>`)
+    .join('');
+}
+
+// Passwort eines ausgewählten Benutzers auf INIT_PW zurücksetzen + Cloud-Sync
+async function resetUserPassword(username) {
+  const user = await idbGet(DB, 'users', username);
+  if (!user) { alert('Benutzer nicht gefunden.'); return; }
+
+  const ok = confirm(
+    `Passwort von "${user.displayName}" (${user.username}) auf das Initialpasswort "${INIT_PW}" zurücksetzen?`
+  );
+  if (!ok) return;
+
+  // Lokal zurücksetzen
+  user.password = INIT_PW;
+  user.pwExpired = true;
+  await idbPut(DB, 'users', user);
+
+  // Cloud: gehashte Variante speichern
+  try {
+    const passwordHash = await sha256Hex(INIT_PW);
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveUser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: user.username,
+        passwordHash,
+        displayName: user.displayName,
+        role: user.role,
+        pwExpired: true
+      })
+    });
+  } catch (err) {
+    console.warn("⚠️ Cloud-Reset fehlgeschlagen:", err);
+  }
+
+  showToast(`Passwort für ${user.displayName} wurde zurückgesetzt.`);
+}
+
+
+// Neuen Benutzer mit INIT_PW anlegen + Cloud-Sync
+async function addNewUser() {
+  const username = prompt('Benutzername (Login-Name, klein geschrieben):');
+  if (!username) return;
+
+  const existing = await idbGet(DB, 'users', username);
+  if (existing) { alert('Dieser Benutzername existiert bereits.'); return; }
+
+  const displayName = prompt('Anzeigename (z. B. "Max Mustermann"):') || username;
+  const role = confirm('Soll der Benutzer Administratorrechte haben?') ? 'Administrator' : 'User';
+
+  const newUser = {
+    username,
+    password: INIT_PW,   // immer Stadtwerke1 lokal
+    displayName,
+    role,
+    pwExpired: true
+  };
+
+  // Lokal anlegen
+  await idbPut(DB, 'users', newUser);
+
+  // Cloud: gehashtes Initialpasswort
+  try {
+    const passwordHash = await sha256Hex(INIT_PW);
+    await fetch("https://timetrackr.alessandrobolte.workers.dev/api/saveUser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        passwordHash,
+        displayName,
+        role,
+        pwExpired: true
+      })
+    });
+  } catch (err) {
+    console.warn("⚠️ Cloud-Anlage fehlgeschlagen:", err);
+  }
+
+  await populateUserDropdown(); // Dropdown erneuern
+  showToast(`Benutzer "${displayName}" wurde angelegt (Initialpasswort: ${INIT_PW}).`);
+}
+
+
+    // Done.
+    // 🌐 Automatischer Cloud-Sync alle 30 Sekunden
+async function autoSyncToCloud() {
+  try {
+    // Nutzer prüfen
+    if (!STATE.currentUser) return;
+
+    // Alle beendeten Sessions laden
+    const allSessions = await idbGetAll(DB, 'categories');
+    const userSessions = allSessions.filter(s => !!s.category && !!s.durationMin);
+
+    // Sessions gruppieren nach Benutzername
+    const grouped = {};
+    for (const s of userSessions) {
+      if (!grouped[s.owner]) grouped[s.owner] = [];
+      grouped[s.owner].push(s);
+    }
+
+    // 🔁 Hochladen
+    for (const [username, sessions] of Object.entries(grouped)) {
+      await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveSession', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          sessions
+        })
+      });
+    }
+
+    // 🗓️ Abwesenheiten hochladen
+    const users = await idbGetAll(DB, 'users');
+    for (const u of users) {
+      if (u.absences && u.absences.length > 0) {
+        await fetch('https://timetrackr.alessandrobolte.workers.dev/api/saveAbsence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u.username, absences: u.absences })
+        });
+      }
+    }
+
+    const now = new Date();
+const timeString = now.toLocaleTimeString('de-DE', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+});
+console.log(`🌐 Auto-Sync erfolgreich (${timeString})`);
+  } catch (err) {
+    console.warn('⚠️ Auto-Sync Fehler:', err);
+  }
+}
+
+// ⏱️ Intervall starten (alle 30 Sekunden)
+setInterval(() => {
+  if (navigator.onLine) {
+    autoSyncToCloud();
+  } else {
+    console.log('📴 Offline – Auto-Sync übersprungen');
+  }
+}, 300 * 1000);
+function formatDateDE(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short', // Mi, Do, Fr
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+    </script>
+    
+</body>
+</html>
