@@ -791,7 +791,7 @@ async function renderDashboard() {
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
           <div style="flex:1;min-width:320px">
             <table id="statsTable">
-              <thead>
+              >
                 
               </thead>
               <tbody></tbody>
@@ -811,7 +811,7 @@ async function renderDashboard() {
           <div style="font-weight:700;margin-bottom:8px">Sessions (Details)</div>
           <div class="sessions-list">
             <table id="sessionsTable">
-              <thead>
+              >
                 <tr><th>Datum</th><th>Benutzer</th><th>Kategorie</th><th>Dauer</th><th>Notiz</th></tr>
               </thead>
               <tbody></tbody>
@@ -1047,7 +1047,7 @@ const list = user.absences
   </div>
 
   <table style="width:100%;margin-top:10px">
-    <thead><tr><th>Von</th><th>Bis</th><th>Notiz</th><th>Aktion</th></tr></thead>
+    ><tr><th>Von</th><th>Bis</th><th>Notiz</th><th>Aktion</th></tr></thead>
     <tbody id="absList">${list}</tbody>
   </table>
 `);
@@ -1181,7 +1181,7 @@ const tr = rows.map(r =>
     <div id="absencesContent" style="display:none;margin-top:8px">
       <div style="font-weight:600;margin-bottom:6px">${isAdmin ? 'Kommende Abwesenheiten' : 'Meine kommenden Abwesenheiten'}</div>
       <table style="width:100%;margin-bottom:14px">
-        <thead>
+        >
           <tr>
             ${isAdmin ? '<th>Benutzer</th>' : ''}
             <th>Von</th><th>Bis</th><th>Notiz</th>
@@ -1405,7 +1405,7 @@ function renderAbsenceCalendar(absences) {
         openModal(`
           <h3>Abwesenheiten am ${formatDate(dateStr)}</h3>
           <table style="width:100%;margin-top:8px">
-            <thead><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+            ><tr><th>Benutzer</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
             <tbody>${details}</tbody>
           </table>
         `);
@@ -2047,7 +2047,7 @@ function formatMinutes(min) {
   sessionsTable.innerHTML = `
     <thead>
       <tr>
-        <th>Datum</th>
+        
         <th>Benutzer</th>
         <th>Kategorie</th>
         <th>Dauer</th>
