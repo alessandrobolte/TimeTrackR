@@ -1576,59 +1576,57 @@ try {
   const modal = openModal(`
     <h3>Zeiten manuell nachtragen</h3>
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
-      <label>Kategorie</label>
-      <select id="mcat">${selOptions}</select>
       <label>Datum</label>
       <input type="date" id="manualDate" value="${new Date().toISOString().split('T')[0]}">
-      <label>Von (hh:mm)</label>
-      <input type="time" id="manualFrom">
-      <label>Bis (hh:mm)</label>
-      <input type="time" id="manualTo">
+
+      <label>Dauer</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="number" id="mhours" min="0" max="24" placeholder="Stunden" style="width:80px">
+        <input type="number" id="mmins" min="0" max="59" placeholder="Minuten" style="width:80px">
+      </div>
+
+      <label>Kategorie</label>
+      <select id="mcat">${selOptions}</select>
+
       <label>Notiz (optional)</label>
       <input type="text" id="manualNote" placeholder="z. B. Meeting, Nachtrag etc.">
+
       <div style="text-align:right;margin-top:8px">
         <button id="saveManual" class="accent small">Speichern</button>
       </div>
     </div>
   `);
 
-  modal.querySelector('#saveManual').addEventListener('click', async () => {
-    const catId = modal.querySelector('#mcat').value;
+  // 💾 Speichern
+  modal.querySelector('#saveManual').onclick = async () => {
     const date = modal.querySelector('#manualDate').value;
-    const from = modal.querySelector('#manualFrom').value;
-    const to = modal.querySelector('#manualTo').value;
+    const catId = modal.querySelector('#mcat').value;
+    const h = parseInt(modal.querySelector('#mhours').value || '0', 10);
+    const m = parseInt(modal.querySelector('#mmins').value || '0', 10);
     const note = modal.querySelector('#manualNote').value.trim();
 
-    if (!catId || !date || !from || !to) {
-      alert('Bitte Kategorie, Datum und Zeit angeben.');
-      return;
-    }
-
-    const start = new Date(`${date}T${from}`);
-    const end = new Date(`${date}T${to}`);
-    const dur = Math.round((end - start) / 60000);
-    if (dur <= 0) {
-      alert('Die Endzeit muss nach der Startzeit liegen.');
-      return;
-    }
+    const dur = h * 60 + m;
+    if (!date) return alert('Bitte Datum auswählen.');
+    if (dur <= 0) return alert('Bitte Dauer eingeben.');
 
     const cat = await idbGet(DB, 'categories', catId);
     cat.sessions = cat.sessions || [];
+
     cat.sessions.push({
       id: uid(),
       username: STATE.currentUser,
-      start: start.toISOString(),
-      end: end.toISOString(),
       durationMin: dur,
-      note
+      note,
+      date, // 🔹 Neues Feld für Datum bleibt erhalten
     });
 
     await idbPut(DB, 'categories', cat);
     closeModal();
-    showToast('Manuelle Zeit gespeichert ✅');
+    showToast('Manuelle Zeit hinzugefügt');
     renderDashboard();
-  });
+  };
 }
+
 
     
     // ---------------------------
