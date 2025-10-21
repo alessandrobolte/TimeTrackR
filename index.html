@@ -1287,10 +1287,14 @@ function renderAbsenceCalendar(absences) {
     // Abwesenheiten vorbereiten
     const map = {};
     absences.forEach(a => {
-      const from = new Date(a.from);
-      const to = new Date(a.to);
-      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-  const key = formatDateKey(d); // ⬅️ statt d.toISOString().slice(0, 10)
+      function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+const from = parseLocalDate(a.from);
+const to = parseLocalDate(a.to);
+for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+  const key = formatDateKey(d);
   if (!map[key]) map[key] = [];
   map[key].push(a);
 }
@@ -1503,7 +1507,7 @@ function renderAbsenceCalendar(absences) {
       const durMin = Math.max(1, Math.round((Date.now() - a.start)/60000));
       // Session-Details wie im Dashboard
       const note = prompt('Kurze Beschreibung (optional):') || '';
-    
+      const timestamp = Date.now();
       // store into category sessions (respect visibility rules by writing but UI filters on read)
       const cat = await idbGet(DB,'categories',a.categoryId);
       if(!cat){ alert('Kategorie nicht gefunden'); localStorage.removeItem('zm_active'); return; }
@@ -1515,7 +1519,7 @@ function renderAbsenceCalendar(absences) {
       }
     
       cat.sessions = cat.sessions || [];
-      cat.sessions.push({ id: a.id, username: a.username, durationMin: durMin, note });
+      cat.sessions.push({ id: a.id, username: a.username, durationMin: durMin, note, timestamp });
       await idbPut(DB,'categories',cat);
       // ---- Cloudflare Worker Sync ----
 try {
@@ -2290,7 +2294,7 @@ function drawLineChart(){
       return modal;
     }
     function closeModal(){ const root=document.getElementById('modalRoot'); root.innerHTML=''; }
-    
+    window.openAbsenceModal = openAbsenceModal;
     // ---------------------------
     // startup + Auto-Login (Variante 2)
     // ---------------------------
