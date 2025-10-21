@@ -1286,19 +1286,26 @@ function renderAbsenceCalendar(absences) {
 
     // Abwesenheiten vorbereiten
     const map = {};
-    absences.forEach(a => {
-      function parseLocalDate(str) {
+function parseLocalDate(str) {
+  if (!str) return null;
   const [y, m, d] = str.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
-const from = parseLocalDate(a.from);
-const to = parseLocalDate(a.to);
-for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-  const key = formatDateKey(d);
-  if (!map[key]) map[key] = [];
-  map[key].push(a);
-}
-    });
+
+absences.forEach(a => {
+  const from = parseLocalDate(a.from);
+  const to = parseLocalDate(a.to);
+  if (!from || !to) return;
+
+  // Schleife über echte lokale Tage
+  const current = new Date(from);
+  while (current <= to) {
+    const key = current.toISOString().split('T')[0]; // sicheres Datum
+    if (!map[key]) map[key] = [];
+    map[key].push(a);
+    current.setDate(current.getDate() + 1);
+  }
+});
 
     const monthName = new Date(year, month, 1).toLocaleString("de-DE", {
       month: "long",
